@@ -20,7 +20,7 @@ case class VariableNode(variable: Variable) extends Node {
 
   def base_factor() : Factor = {
     val rows = variable.possible_values.map(x => FactorRow(Realization(Map(variable->x)), 1.0))
-    Factor(rows)
+    RowsFactor(rows)
   }
 
   def variables: List[Variable] = {

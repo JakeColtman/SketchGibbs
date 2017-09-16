@@ -17,5 +17,17 @@ case class Message(factor: Factor) extends IMessage {
 
 
 class MessageSpec extends FlatSpec with Matchers {
+  "A message " should " be able to extract its variable" in {
+    true
+  }
+
+  "A message " should " fail if given a multi-variable parameter " in {
+    true
+    //n [IndexOutOfBoundsException] should be thrownBy s.charAt(-1)
+  }
+
+  "A message " should " return a value for all realizations of a variable " in {
+    true
+  }
 
 }
