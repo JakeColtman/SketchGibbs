@@ -17,6 +17,12 @@ case class FactorMessage(factor: Factor) extends Message {
   }
 }
 
+case class MockMessage() extends Message {
+  override def variable: Variable = VariableFactory("mocked")
+
+  override def value_at(realization: Realization): Double = 1.0
+}
+
 class MessageSpec extends FlatSpec with Matchers {
   "A message " should " be able to extract its variable" in {
     val a = VariableFactory("a")

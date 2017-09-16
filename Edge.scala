@@ -22,7 +22,7 @@ trait EdgeMaker {
   def apply(edgeType: EdgeType, from_vertex: Vertex, to_vertex: Vertex): List[Edge]
 }
 
-class EdgeFactory extends EdgeMaker {
+object EdgeFactory extends EdgeMaker {
   def apply(edgeType: EdgeType, from_vertex: Vertex, to_vertex: Vertex): List[Edge] = {
     edgeType match {
       case Directed => List(DirectedEdge(from_vertex, to_vertex, None))
@@ -33,8 +33,38 @@ class EdgeFactory extends EdgeMaker {
   }
 }
 
-class EdgeFactorySpec extends FlatSpec with Matchers {
-  "Made edges between the same vertexs and without messages " should " equal each other" in {
-    val factory = new EdgeFactory()
+class EdgeSpec extends FlatSpec with Matchers {
+  "Edges " should " be equal if their vertices are the same" in {
+    val a = VertexFactory(VariableNode(VariableFactory("a")))
+    val b: Vertex = VertexFactory(VariableNode(VariableFactory("b")))
+    val edge0 = EdgeFactory(Directed, a, b)
+    val edge1 = EdgeFactory(Directed, a, b)
+    edge0 should be (edge1)
   }
+
+  "Edges " should " not be equal if their vertices are different " in {
+    val a = VertexFactory(VariableNode(VariableFactory("a")))
+    val b: Vertex = VertexFactory(VariableNode(VariableFactory("b")))
+    val c: Vertex = VertexFactory(VariableNode(VariableFactory("c")))
+    val edge0 = EdgeFactory(Directed, a, b)
+    val edge1 = EdgeFactory(Directed, a, c)
+    edge0 should not be edge1
+  }
+
+  "Edges of different types " should " not be equal " in {
+    val a = VertexFactory(VariableNode(VariableFactory("a")))
+    val b: Vertex = VertexFactory(VariableNode(VariableFactory("b")))
+    val edge0 = EdgeFactory(Directed, a, b)
+    val edge1 = EdgeFactory(DirectedSeparator, a, b)
+    edge0 should not be edge1
+  }
+
+  "Undirected edges " should " become 2 directed edges" in {
+    val a = VertexFactory(VariableNode(VariableFactory("a")))
+    val b: Vertex = VertexFactory(VariableNode(VariableFactory("b")))
+    val edges = EdgeFactory(Undirected, a, b)
+
+    edges should contain theSameElementsAs EdgeFactory(Directed, a, b) ++ EdgeFactory(Directed, b, a)
+  }
+
 }
