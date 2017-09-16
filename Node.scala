@@ -9,7 +9,7 @@ trait Node {
 
 class FactorNode(factor: Factor) extends  Node {
   override def generate_message_to(vertex: Vertex, incoming_messages: Map[Vertex, Message]): Message = {
-    Message(factor)
+    FactorMessage(factor)
     //marginalize out other variables
   }
 
@@ -28,13 +28,15 @@ case class VariableNode(variable: Variable) extends Node {
   }
 
   def combine_message(messages: List[Message]) : Message = {
+    val rows = variable.possible_values.map(x => FactorRow(Realization(Map(variable->x)), 1.0))
     println(messages.size)
-    val factor_for_message = messages.foldLeft(base_factor())((x, y) => x.mult(y.factor))
-    Message(factor_for_message)
+    FactorMessage(RowsFactor(rows))
+    //val factor_for_message = messages.foldLeft(base_factor())((x, y) => x.mult(y.fa//ctor))
+    //FactorMessage(factor_for_message)
   }
 
   override def generate_message_to(vertex: Vertex, incoming_messages: Map[Vertex, Message]): Message = {
-    Message(base_factor())
+    FactorMessage(base_factor())
   }
 }
 
