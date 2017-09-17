@@ -1,7 +1,11 @@
 package SumProduct
 import org.scalatest._
 
-case class Realization(realization: Map[Variable, Int])
+case class Realization(realization: Map[Variable, Int]) {
+  def ++(other_realization: Realization): Realization = {
+    Realization(other_realization.realization ++ realization)
+  }
+}
 
 case class FactorRow(realization: Realization, value: Double)
 
@@ -40,22 +44,27 @@ case class RowsFactor(rows: List[FactorRow]) extends Factor {
 
 }
 
+case object FactorFactory {
+  def apply(factorRows: List[FactorRow]): Factor = {
+    RowsFactor(factorRows)
+  }
+  def apply(realizations: List[Realization], values: List[Double]): Factor = {
+    FactorFactory((realizations zip values).map({case(r, d) => FactorRow(r, d)}))
+  }
+}
+
 class FactorSpec extends FlatSpec with Matchers {
     "A factor " should "accurately record its variables" in {
       val a = VariableFactory("a")
       val b = VariableFactory("b")
-      val row = FactorRow(Realization(Map(a->0,b->0)), 1.0)
-      RowsFactor(List(row)).variables should be (List(a, b))
+      FactorFactory(List((a<=0) ++ (b<=0)), List(1.0)).variables should contain theSameElementsAs List(a, b)
     }
 
     "A single variable factor " should "act like a lookup" in  {
       val a = VariableFactory("a")
-      val row_false = FactorRow(Realization(Map(a->0)), 0.8)
-      val row_true = FactorRow(Realization(Map(a->1)), 0.2)
-
-      val facty = RowsFactor(List(row_false, row_true))
-      facty.value_at(Realization(Map(a->0))) should be (0.8)
-      facty.value_at(Realization(Map(a->1))) should be (0.2)
+      val facty = FactorFactory(List(a<=0, a<=1), List(0.8, 0.2))
+      facty.value_at(a<=0) should be (0.8)
+      facty.value_at(a<=1) should be (0.2)
     }
 
     "Partial realizations " should " return SUM(realizations)" in {
@@ -64,14 +73,10 @@ class FactorSpec extends FlatSpec with Matchers {
 
       val p_true = 0.2
       val q_true = 0.6
-
-      val row00 = FactorRow(Realization(Map(a->0,b->0)), (1.0 - p_true) * (1.0 - q_true))
-      val row01 = FactorRow(Realization(Map(a->0,b->1)), (1.0 - p_true) * q_true)
-      val row10 = FactorRow(Realization(Map(a->1,b->0)), p_true * (1.0 - q_true))
-      val row11 = FactorRow(Realization(Map(a->1,b->1)), p_true * q_true)
-
-      val facty = RowsFactor(List(row00, row01, row10, row11))
-      facty.marginal_value_at(Realization(Map(a->0))) should be (1 - p_true)
+      val realizations = List((a<=0) ++ (b<=0), (a<=0) ++ (b<=1), (a<=1) ++ (b<=0), (a<=1) ++ (b<=1))
+      val values = List((1.0 - p_true) * (1.0 - q_true), (1.0 - p_true) * q_true, p_true * (1.0 - q_true),  p_true * q_true)
+      val facty = FactorFactory(realizations, values)
+      facty.marginal_value_at(a<=0) should be (1 - p_true)
     }
 
   "Indep factor " should " marginalize indep" in {
@@ -81,24 +86,20 @@ class FactorSpec extends FlatSpec with Matchers {
     val p_true = 0.2
     val q_true = 0.6
 
-    val row00 = FactorRow(Realization(Map(a->0,b->0)), (1.0 - p_true) * (1.0 - q_true))
-    val row01 = FactorRow(Realization(Map(a->0,b->1)), (1.0 - p_true) * q_true)
-    val row10 = FactorRow(Realization(Map(a->1,b->0)), p_true * (1.0 - q_true))
-    val row11 = FactorRow(Realization(Map(a->1,b->1)), p_true * q_true)
+    val realizations = List((a<=0) ++ (b<=0), (a<=0) ++ (b<=1), (a<=1) ++ (b<=0), (a<=1) ++ (b<=1))
+    val values = List((1.0 - p_true) * (1.0 - q_true), (1.0 - p_true) * q_true, p_true * (1.0 - q_true),  p_true * q_true)
+    val facty = FactorFactory(realizations, values)
 
-    val facty = RowsFactor(List(row00, row01, row10, row11))
-    facty.marginalize(b).marginal_value_at(Realization(Map(a->1))) should be (p_true +- 0.01)
-    facty.marginalize(a).marginal_value_at(Realization(Map(b->0))) should be ((1.0 - q_true) +- 0.01)
+    facty.marginalize(b).marginal_value_at(a<=1) should be (p_true +- 0.01)
+    facty.marginalize(a).marginal_value_at(b<=0) should be ((1.0 - q_true) +- 0.01)
   }
 
   "Superset realizations " should " act like set realizations" in {
     val a = VariableFactory("a")
     val b = VariableFactory("b")
-    val row0 = FactorRow(Realization(Map(a->0)), 0.2)
-    val row1 = FactorRow(Realization(Map(a->1)), 0.8)
-    val facty = RowsFactor(List(row0, row1))
-    facty.value_at(Realization(Map(a->1, b->1))) should be (facty.value_at(Realization(Map(a->1))))
-    facty.value_at(Realization(Map(a->1, b->0))) should be (facty.value_at(Realization(Map(a->1))))
+    val facty = FactorFactory(List(a<=0, a<=1), List(0.2, 0.8))
+    facty.value_at((a<=1) ++ (b<=1)) should be (facty.value_at(a<=1))
+    facty.value_at((a<=1) ++ (b<=0)) should be (facty.value_at(a<=1))
     facty.value_at(Realization(Map(a->1, b->0))) should be (0.8)
   }
 
@@ -106,21 +107,14 @@ class FactorSpec extends FlatSpec with Matchers {
     val a = VariableFactory("a")
     val b = VariableFactory("b")
 
-    val b_true = 0.3
+    val realizations = List((a<=0) ++ (b<=0), (a<=0) ++ (b<=1), (a<=1) ++ (b<=0), (a<=1) ++ (b<=1))
+    val values = List(0.1, 0.2, 0.3, 0.4)
+    val facty = FactorFactory(realizations, values)
 
-    val row00 = FactorRow(Realization(Map(a->0,b->0)), 0.1)
-    val row01 = FactorRow(Realization(Map(a->0,b->1)), 0.2)
-    val row10 = FactorRow(Realization(Map(a->1,b->0)), 0.3)
-    val row11 = FactorRow(Realization(Map(a->1,b->1)), 0.4)
-
-    val facty = RowsFactor(List(row00, row01, row10, row11))
-
-    val row0 = FactorRow(Realization(Map(b->0)), 0.2)
-    val row1 = FactorRow(Realization(Map(b->1)), 0.8)
-    val other_facty = RowsFactor(List(row0, row1))
+    val other_facty = FactorFactory(List(b<=0, b<=1), List(0.2, 0.8))
 
     val multed_factor = facty.mult(other_facty)
-    multed_factor.value_at(Realization(Map(a->0,b->1))) should be ((0.2 * 0.8) +- 0.01)
+    multed_factor.value_at((a<=0) ++ (b<=1)) should be ((0.2 * 0.8) +- 0.01)
 
   }
 

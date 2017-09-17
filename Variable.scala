@@ -1,9 +1,12 @@
 package SumProduct
 import org.scalatest.{FlatSpec, Matchers}
 
+
+
 trait Variable {
   val name: String
   val possible_values: List[Int]
+  def <= (outcome: Int) : Realization = Realization(Map(VariableFactory(name)->outcome))
 }
 
 object VariableFactory {
