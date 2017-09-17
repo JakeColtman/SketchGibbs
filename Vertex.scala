@@ -6,6 +6,7 @@ trait Vertex {
   val content: Node
   var incoming_edges: List[Edge]
   var outgoing_edges: List[Edge]
+  def is_complete: Boolean
 
   def can_send_to(vertex: Vertex) : Boolean = {
 
@@ -38,6 +39,7 @@ case class NodeVertex(node: Node) extends Vertex {
   val content = node
   override var incoming_edges: List[Edge] = List()
   override var outgoing_edges: List[Edge] = List()
+  override def is_complete = !(incoming_edges.exists(e => e.message.isEmpty) || outgoing_edges.exists(e => e.message.isEmpty))
 }
 
 case object VertexFactory {
