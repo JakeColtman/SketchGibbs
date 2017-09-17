@@ -21,13 +21,11 @@ case class BaseGraph(vertices: List[Vertex]) extends Graph {
     vertices.foreach(v => if (v == edge.from) v.outgoing_edges = v.outgoing_edges ++ List(edge))
     vertices.foreach(v => if (v == edge.to) v.incoming_edges = v.incoming_edges ++ List(edge))
   }
-
 }
 
 case object GraphFactory{
   def apply(vertices: List[Vertex]) = BaseGraph(vertices)
 }
-
 
 class GraphSpec extends FlatSpec with Matchers {
   "A graph " should "return a list of its vertices" in {
@@ -37,4 +35,21 @@ class GraphSpec extends FlatSpec with Matchers {
     val graph = GraphFactory(List(a, b))
     graph.vertices should contain theSameElementsAs List(a, b)
   }
+  "A graph " should "be able to coordinate adding edges" in {
+    val a = VertexFactory("a")
+    val b = VertexFactory("b")
+
+    val graph = GraphFactory(List(a, b))
+    val edge = a->b
+    graph.add_edges(edge)
+    a.outgoing_edges.isEmpty should be (false)
+    b.outgoing_edges.isEmpty should be (true)
+    b.incoming_edges.isEmpty should be (false)
+    a.outgoing_edges should be (a->b)
+    b.incoming_edges should be (a->b)
+
+    graph.add_edges(b->a)
+    b.outgoing_edges should be (b->a)
+  }
+
 }
