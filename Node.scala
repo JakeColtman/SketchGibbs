@@ -12,7 +12,7 @@ case class FactorNode(factor: Factor) extends  Node {
     val combined_factor = incoming_messages.foldLeft(factor)({case (a, (v, m)) => a.mult(m.factor)})
     val other_variables = combined_factor.variables.filter(x => !vertex.content.variables.contains(x))
     val marginalized_factor = other_variables.foldLeft(combined_factor)({case (f, v) => f.marginalize(v)})
-    FactorMessage(marginalized_factor)
+    MessageFactory(marginalized_factor)
   }
 
   override def variables: List[Variable] = factor.variables
@@ -27,7 +27,7 @@ case class ObservedVariableNode(variable: Variable, value: Int) extends Node {
       if (x == value) FactorRow(Realization(Map(variable->value)), 1.0)
       else FactorRow(Realization(Map(variable->value)), 0.0)
     })
-    FactorMessage(RowsFactor(rows))
+    MessageFactory(RowsFactor(rows))
   }
 }
 
@@ -53,7 +53,7 @@ case class VariableNode(variable: Variable) extends Node {
   }
 
   def combine_message(messages: List[Message]) : Message = {
-    if (messages.isEmpty) return FactorMessage(base_factor())
+    if (messages.isEmpty) return MessageFactory(base_factor())
     val rows = variable.possible_values.map({
       value => {
         val realization = Realization(Map(variable->value))
@@ -61,7 +61,7 @@ case class VariableNode(variable: Variable) extends Node {
         FactorRow(realization, message_value)
       }
     })
-    FactorMessage(RowsFactor(rows))
+    MessageFactory(RowsFactor(rows))
   }
 
   override def generate_message_to(vertex: Vertex, incoming_messages: Map[Vertex, Message]): Message = {
@@ -71,17 +71,20 @@ case class VariableNode(variable: Variable) extends Node {
 
 class FactorNodeSpec extends FlatSpec with Matchers {
   "A FactorNode receiving a constant factor " should " act like a marginalization" in {
-    val varA = VariableFactory("a")
-    val varB = VariableFactory("b")
-    val row00 = FactorRow(Realization(Map(varA->0, varB->0)), 0.2 * 0.6)
-    val row01 = FactorRow(Realization(Map(varA->0, varB->1)), 0.2 * 0.4)
-    val row10 = FactorRow(Realization(Map(varA->1, varB->0)), 0.8 * 0.6)
-    val row11 = FactorRow(Realization(Map(varA->1, varB->1)), 0.8 * 0.4)
-    val facty = RowsFactor(List(row00, row01, row10, row11))
+    val a = VariableFactory("a")
+    val b = VariableFactory("b")
+
+
+    val realizations = List((a<=0) ++ (b<=0), (a<=0) ++ (b<=1), (a<=1) ++ (b<=0), (a<=1) ++ (b<=1))
+    val values = List(0.2*0.6, 0.2*0.4, 0.8*0.6, 0.8*0.4)
+    val facty = FactorFactory(realizations, values)
+
     val factyNode = FactorNode(facty)
     val factyVertex = VertexFactory(factyNode)
+
     val vertA = VertexFactory("a")
     val vertB = VertexFactory("b")
+
     GraphFactory(List(factyVertex, vertA, vertB)).add_edges((vertB<->factyVertex) ++ (factyVertex<->vertA))
     vertB.outgoing_edges.size should be (1)
     factyVertex.incoming_edges.size should be (2)
@@ -89,9 +92,9 @@ class FactorNodeSpec extends FlatSpec with Matchers {
     factyVertex.incoming_edges.count(e => e.message.isDefined) should be (1)
     factyVertex.send_message_to(vertA)
     val message = vertA.incoming_edges.head.message
-    message.get.variable should be (varA)
-    message.get.value_at(Realization(Map(varA->0))) should be (0.2)
-    message.get.value_at(Realization(Map(varA->1))) should be (0.8)
+    message.get.variable should be (a)
+    message.get.value_at(a<=0) should be (0.2)
+    message.get.value_at(a<=1) should be (0.8)
   }
 
 }
@@ -115,10 +118,9 @@ class VariableNodeSpec extends FlatSpec with Matchers {
     val c = VertexFactory("c")
     val vary = VariableFactory("b")
     GraphFactory(List(a, b,c)).add_edges((a<->b) ++ (b<->c))
-    val row0 = FactorRow(Realization(Map(vary->0)), 9.0)
-    val row1 = FactorRow(Realization(Map(vary->1)), 10.0)
-    val facty = RowsFactor(List(row0, row1))
-    val message = FactorMessage(facty)
+    val facty = FactorFactory(List(vary<=0, vary<=1), List(9.0, 10.0))
+    val message = MessageFactory(facty)
+
     b.content.generate_message_to(c, Map(a->message)).variable should be (vary)
     b.content.generate_message_to(c, Map(a->message)).value_at(Realization(Map(vary->0))) should be (9.0)
     b.content.generate_message_to(c, Map(a->message)).value_at(Realization(Map(vary->1))) should be (10.0)
@@ -131,17 +133,13 @@ class VariableNodeSpec extends FlatSpec with Matchers {
     val c = VertexFactory("c")
     val vary = VariableFactory("b")
     GraphFactory(List(a, b,c)).add_edges((a<->b) ++ (aa<->b) ++ (b<->c))
-    val row0a = FactorRow(Realization(Map(vary->0)), 9.0)
-    val row1a = FactorRow(Realization(Map(vary->1)), 10.0)
-    val row0aa = FactorRow(Realization(Map(vary->0)), 2.0)
-    val row1aa = FactorRow(Realization(Map(vary->1)), 3.0)
-    val factya = RowsFactor(List(row0a, row1a))
-    val factyaa = RowsFactor(List(row0aa, row1aa))
-    val messagea = FactorMessage(factya)
-    val messageaa = FactorMessage(factyaa)
+    val factya = FactorFactory(List(vary<=0, vary<=1), List(9.0, 10.0))
+    val factyaa = FactorFactory(List(vary<=0, vary<=1), List(2.0, 3.0))
+    val messagea = MessageFactory(factya)
+    val messageaa = MessageFactory(factyaa)
 
     b.content.generate_message_to(c, Map(a->messagea, aa->messageaa)).variable should be (vary)
-    b.content.generate_message_to(c, Map(a->messagea, aa->messageaa)).value_at(Realization(Map(vary->0))) should be (18.0)
-    b.content.generate_message_to(c, Map(a->messagea, aa->messageaa)).value_at(Realization(Map(vary->1))) should be (30.0)
+    b.content.generate_message_to(c, Map(a->messagea, aa->messageaa)).value_at(vary<=0) should be (18.0)
+    b.content.generate_message_to(c, Map(a->messagea, aa->messageaa)).value_at(vary<=1) should be (30.0)
   }
 }

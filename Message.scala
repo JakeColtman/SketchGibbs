@@ -18,6 +18,12 @@ case class FactorMessage(factor: Factor) extends Message {
   }
 }
 
+case object MessageFactory {
+  def apply(factor: Factor) : Message = {
+    FactorMessage(factor)
+  }
+}
+
 case class MockMessage() extends Message {
   override def variable: Variable = VariableFactory("mocked")
 
