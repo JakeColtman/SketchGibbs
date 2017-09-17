@@ -14,6 +14,8 @@ case class TFVariable(name: String) extends Variable{
   val possible_values = List(0,1)
 }
 
+
+
 class VariableSpec extends FlatSpec with Matchers {
   "A variable " should "return a list of possible values" in {
     val a = VariableFactory("a")

@@ -18,7 +18,30 @@ case class FactorNode(factor: Factor) extends  Node {
   override def variables: List[Variable] = factor.variables
 }
 
+case class ObservedVariableNode(variable: Variable, value: Int) extends Node {
+  def variables: List[Variable] = {
+    List(variable)
+  }
+  def generate_message_to(vertex: Vertex, incoming_messages: Map[Vertex, Message]): Message = {
+    val rows = variable.possible_values.map(x => {
+      if (x == value) FactorRow(Realization(Map(variable->value)), 1.0)
+      else FactorRow(Realization(Map(variable->value)), 0.0)
+    })
+    FactorMessage(RowsFactor(rows))
+  }
+}
+
 case class VariableNode(variable: Variable) extends Node {
+
+  def unnormalized_marginal(messages: List[Message]): Factor = {
+    val unnormalized_rows = variable.possible_values.map(x => {
+      val value = messages.foldLeft(1.0)((tot, m) => tot * m.value_at(Realization(Map(variable->x))))
+      FactorRow(Realization(Map(variable->x)), value)
+    } )
+
+    RowsFactor(unnormalized_rows)
+
+  }
 
   def base_factor() : Factor = {
     val rows = variable.possible_values.map(x => FactorRow(Realization(Map(variable->x)), 1.0))
