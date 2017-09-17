@@ -6,7 +6,13 @@ trait Vertex {
   val content: Node
   var incoming_edges: List[Edge]
   var outgoing_edges: List[Edge]
-  def is_complete: Boolean
+  def is_complete = !(incoming_edges.exists(e => e.message.isEmpty) || outgoing_edges.exists(e => e.message.isEmpty))
+
+  def emit_messages(): Unit = {
+    outgoing_edges.foreach(e => {
+      if (can_send_to(e.to)) send_message_to(e.to)
+    })
+  }
 
   def can_send_to(vertex: Vertex) : Boolean = {
 
@@ -39,7 +45,7 @@ case class NodeVertex(node: Node) extends Vertex {
   val content = node
   override var incoming_edges: List[Edge] = List()
   override var outgoing_edges: List[Edge] = List()
-  override def is_complete = !(incoming_edges.exists(e => e.message.isEmpty) || outgoing_edges.exists(e => e.message.isEmpty))
+
 }
 
 case object VertexFactory {

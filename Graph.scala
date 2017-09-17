@@ -5,6 +5,8 @@ import org.scalatest.{FlatSpec, Matchers}
 trait Graph {
   val vertices: List[Vertex]
   def add_edges(edges: List[Edge]) : Graph
+  def is_complete: Boolean
+  def run_to_completion(): Unit
 }
 
 case class BaseGraph(vertices: List[Vertex]) extends Graph {
@@ -21,6 +23,16 @@ case class BaseGraph(vertices: List[Vertex]) extends Graph {
   def add_edge(edge: Edge) : Unit = {
     vertices.foreach(v => if (v == edge.from) v.outgoing_edges = v.outgoing_edges ++ List(edge))
     vertices.foreach(v => if (v == edge.to) v.incoming_edges = v.incoming_edges ++ List(edge))
+  }
+
+  override def is_complete: Boolean = {
+    !vertices.exists(v => v.is_complete)
+  }
+
+  override def run_to_completion(): Unit = {
+    while (!is_complete){
+      vertices.foreach(v => v.emit_messages())
+    }
   }
 }
 
