@@ -4,6 +4,7 @@ import org.scalatest._
 trait Message{
   def variable: Variable
   def value_at(realization: Realization): Double
+  def factor: Factor
 }
 
 case class FactorMessage(factor: Factor) extends Message {
@@ -21,6 +22,7 @@ case class MockMessage() extends Message {
   override def variable: Variable = VariableFactory("mocked")
 
   override def value_at(realization: Realization): Double = 1.0
+  def factor = RowsFactor(List())
 }
 
 class MessageSpec extends FlatSpec with Matchers {

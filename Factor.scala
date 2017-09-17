@@ -35,10 +35,6 @@ case class RowsFactor(rows: List[FactorRow]) extends Factor {
   }
 
   def mult(factor: Factor) : Factor = {
-    rows.foreach(println)
-    factor.variables.foreach(println)
-    rows.map((row) => factor.value_at(row.realization)).foreach(println)
-
     RowsFactor(rows.map((row) => FactorRow(row.realization, row.value * factor.value_at(row.realization))))
   }
 

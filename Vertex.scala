@@ -18,7 +18,7 @@ trait Vertex {
 
   def send_message_to(vertex: Vertex) : Unit = {
     if (!can_send_to(vertex)) return
-    val other_messages = incoming_edges.map(message => (message.from, message.message.get)).toMap
+    val other_messages = incoming_edges.filter(m=> m.from != vertex).map(message => (message.from, message.message.get)).toMap
     val message = content.generate_message_to(vertex, other_messages)
     outgoing_edges.filter(e => e.to == vertex).head.message = Some(message)
     vertex.receive_message(this, Some(message))

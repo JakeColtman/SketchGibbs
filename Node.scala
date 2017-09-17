@@ -7,10 +7,12 @@ trait Node {
   def variables: List[Variable]
 }
 
-class FactorNode(factor: Factor) extends  Node {
+case class FactorNode(factor: Factor) extends  Node {
   override def generate_message_to(vertex: Vertex, incoming_messages: Map[Vertex, Message]): Message = {
-    FactorMessage(factor)
-    //marginalize out other variables
+    val combined_factor = incoming_messages.foldLeft(factor)({case (a, (v, m)) => a.mult(m.factor)})
+    val other_variables = combined_factor.variables.filter(x => !vertex.content.variables.contains(x))
+    val marginalized_factor = other_variables.foldLeft(combined_factor)({case (f, v) => f.marginalize(v)})
+    FactorMessage(marginalized_factor)
   }
 
   override def variables: List[Variable] = factor.variables
@@ -42,6 +44,33 @@ case class VariableNode(variable: Variable) extends Node {
   override def generate_message_to(vertex: Vertex, incoming_messages: Map[Vertex, Message]): Message = {
     combine_message(incoming_messages.values.toList)
   }
+}
+
+class FactorNodeSpec extends FlatSpec with Matchers {
+  "A FactorNode receiving a constant factor " should " act like a marginalization" in {
+    val varA = VariableFactory("a")
+    val varB = VariableFactory("b")
+    val row00 = FactorRow(Realization(Map(varA->0, varB->0)), 0.2 * 0.6)
+    val row01 = FactorRow(Realization(Map(varA->0, varB->1)), 0.2 * 0.4)
+    val row10 = FactorRow(Realization(Map(varA->1, varB->0)), 0.8 * 0.6)
+    val row11 = FactorRow(Realization(Map(varA->1, varB->1)), 0.8 * 0.4)
+    val facty = RowsFactor(List(row00, row01, row10, row11))
+    val factyNode = FactorNode(facty)
+    val factyVertex = VertexFactory(factyNode)
+    val vertA = VertexFactory("a")
+    val vertB = VertexFactory("b")
+    GraphFactory(List(factyVertex, vertA, vertB)).add_edges((vertB<->factyVertex) ++ (factyVertex<->vertA))
+    vertB.outgoing_edges.size should be (1)
+    factyVertex.incoming_edges.size should be (2)
+    vertB.send_message_to(factyVertex)
+    factyVertex.incoming_edges.count(e => e.message.isDefined) should be (1)
+    factyVertex.send_message_to(vertA)
+    val message = vertA.incoming_edges.head.message
+    message.get.variable should be (varA)
+    message.get.value_at(Realization(Map(varA->0))) should be (0.2)
+    message.get.value_at(Realization(Map(varA->1))) should be (0.8)
+  }
+
 }
 
 class VariableNodeSpec extends FlatSpec with Matchers {
