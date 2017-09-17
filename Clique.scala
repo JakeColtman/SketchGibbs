@@ -4,53 +4,49 @@ import org.scalatest.{FlatSpec, Matchers}
 
 trait Clique {
   def separator_variables_from(iClique: Clique): Clique
-  def combine_with(iClique: Clique): Clique
-  def vertices: List[Vertex]
+  def vertices: Set[Vertex]
 }
 
-case class ListClique(vertices: List[Vertex]) extends Clique {
+case class ListClique(vertices: Set[Vertex]) extends Clique {
   def separator_variables_from(clique: Clique): Clique = {
-    ListClique(clique.vertices.toSet.intersect(vertices.toSet).toList)
+    ListClique(clique.vertices.intersect(vertices))
   }
 
-  def combine_with(clique: Clique) : Clique = {
-    ListClique(clique.vertices.toSet.union(vertices.toSet).toList)
-  }
 }
 
 case object CliqueCombiner {
 
   def is_vertex_addable_to_clique(vertex: Vertex, clique: Clique) : Boolean = {
-    !clique.vertices.exists(v => !v.outgoing_edges.exists(e => e.to == vertex)) //TODO don't assume bidirectionality
+    !clique.vertices.filter(v => v != vertex).exists(v => !v.outgoing_edges.exists(e => e.to == vertex)) //TODO don't assume bidirectionality
   }
 
   def can_cliques_be_combined(cliquea: Clique, cliqueb: Clique) : Boolean = {
-    val cannot_a_to_b : List[Boolean] = for (v <- cliquea.vertices) yield {!is_vertex_addable_to_clique(v, cliqueb)}
-    val cannot_b_to_a : List[Boolean] = for (v <- cliqueb.vertices) yield {!is_vertex_addable_to_clique(v, cliquea)}
-    cannot_a_to_b.exists(x => x) || cannot_b_to_a.exists(x => x)
+    val cannot_a_to_b : Set[Boolean] = for (v <- cliquea.vertices) yield {!is_vertex_addable_to_clique(v, cliqueb)}
+    val cannot_b_to_a : Set[Boolean] = for (v <- cliqueb.vertices) yield {!is_vertex_addable_to_clique(v, cliquea)}
+    !(cannot_a_to_b.exists(x => x) || cannot_b_to_a.exists(x => x))
   }
 }
 
 case object CliqueFactory {
 
-  def apply(vertices: List[Vertex]) : Clique = {
+  def apply(vertices: Set[Vertex]) : Clique = {
     ListClique(vertices)
   }
 
-  def apply(cliqueA: Clique, cliqueB: Clique): Clique = {
-    ListClique(cliqueA.vertices ++ cliqueB.vertices)
-  }
+  def apply(cliqueA: Clique, cliqueB: Clique): Clique = ListClique(cliqueA.vertices.union(cliqueB.vertices))
 
   def apply(vertex: Vertex) : List[Clique] = {
-    if (vertex.outgoing_edges.isEmpty) return List(CliqueFactory(List(vertex)))
-    var cliques = vertex.outgoing_edges.map(x => CliqueFactory(List(vertex, x.to)))
-
+    if (vertex.outgoing_edges.isEmpty) {
+      return List(CliqueFactory(Set(vertex)))
+    }
+    var cliques = vertex.outgoing_edges.map(x => CliqueFactory(Set(vertex, x.to)))
     def try_combine_cliques(cliques: List[Clique]) : (Boolean, List[Clique]) = {
       var new_cliques = cliques
+
       for(clique_a<-new_cliques;clique_b<-new_cliques) yield {
         if (CliqueCombiner.can_cliques_be_combined(clique_a, clique_b)) {
           new_cliques = new_cliques.filter(x => (x!= clique_a) & (x!= clique_b))
-          new_cliques = new_cliques ++ List(clique_a.combine_with(clique_b))
+          new_cliques = new_cliques ++ List(CliqueFactory(clique_a, clique_b))
         }
         else clique_a
       }
@@ -73,11 +69,104 @@ case object CliqueFactory {
 
 class CliqueSpec extends FlatSpec with Matchers {
 
-    "A clique factory " should " return a degenerate set of cliques for variables not connected to anything else" in {
-      val a = VertexFactory("a")
+  "A clique combiner " should " be willing to add a vertex that connects to all members of a clique " in {
+    val a = VertexFactory("a")
+    val c = VertexFactory("c")
+    val b = VertexFactory("b")
+    GraphFactory(List(a, b, c)).add_edges((a<->b) ++ (b<->c) ++ (a<->c))
+    val starting_clique = CliqueFactory(Set(a,b))
+    CliqueCombiner.is_vertex_addable_to_clique(c, starting_clique) should be (true)
+  }
 
-      CliqueFactory(a).head should be (CliqueFactory(List(a)))
-    }
+  "A clique combiner " should " be not willing to add a vertex that doesn't connect to all members of a clique " in {
+    val a = VertexFactory("a")
+    val c = VertexFactory("c")
+    val b = VertexFactory("b")
+    GraphFactory(List(a, b, c)).add_edges((a<->b) ++ (b<->c))
+    val starting_clique = CliqueFactory(Set(a,b))
+    CliqueCombiner.is_vertex_addable_to_clique(c, starting_clique) should be (false)
+  }
+
+  "A clique combiner " should " be willing to combine cliques if all members of both cliques can be added to the other " in {
+    val a = VertexFactory("a")
+    val c = VertexFactory("c")
+    val b = VertexFactory("b")
+    val d = VertexFactory("d")
+
+    GraphFactory(List(a, b, c, d)).add_edges((a<->b) ++ (c<->d) ++ (b<->c) ++ (b<->d) ++ (a<->c) ++ (a<->d))
+    val cliqueA = CliqueFactory(Set(a, b))
+    val cliqueB = CliqueFactory(Set(c, d))
+    CliqueCombiner.can_cliques_be_combined(cliqueA, cliqueB) should be (true)
+  }
+
+  "A clique combiner " should " not be willing to combine cliques if any member of one clique can't be added to the other " in {
+    val a = VertexFactory("a")
+    val c = VertexFactory("c")
+    val b = VertexFactory("b")
+    val d = VertexFactory("d")
+
+    GraphFactory(List(a, b, c, d)).add_edges((a<->b) ++ (c<->d) ++ (b<->d) ++ (b<->c))
+    val cliqueA = CliqueFactory(Set(a, b))
+    val cliqueB = CliqueFactory(Set(c, d))
+    CliqueCombiner.can_cliques_be_combined(cliqueA, cliqueB) should be (false)
+
+  }
+
+  "A clique factory " should " return a degenerate set of cliques for variables not connected to anything else" in {
+    val a = VertexFactory("a")
+
+    CliqueFactory(a).head should be (CliqueFactory(Set(a)))
+  }
+
+  "A clique factory " should " match pairs into cliques" in {
+    val a = VertexFactory("a")
+    val c = VertexFactory("c")
+    val b = VertexFactory("b")
+
+    GraphFactory(List(a, b, c)).add_edges((a<->b) ++ (b<->c))
+    CliqueFactory(a) should contain theSameElementsAs List(CliqueFactory(Set(a, b)))
+    CliqueFactory(b) should contain theSameElementsAs List(CliqueFactory(Set(b,a)), CliqueFactory(Set(b,c)))
+    CliqueFactory(c) should contain theSameElementsAs List(CliqueFactory(Set(c,b)))
+  }
+
+  "A clique combiner " should " be able to combine cliques with shared elements " in {
+    val a = VertexFactory("a")
+    val c = VertexFactory("c")
+    val b = VertexFactory("b")
+
+    GraphFactory(List(a, b, c)).add_edges((a<->b) ++ (b<->c) ++ (a<->c))
+
+    CliqueCombiner.can_cliques_be_combined(CliqueFactory(Set(a, b)), CliqueFactory(Set(a, c))) should be (true)
+  }
+
+  "A clique factory " should " not duplicate entries when combining cliques with overlapping elements " in {
+    val a = VertexFactory("a")
+    val c = VertexFactory("c")
+    val b = VertexFactory("b")
+
+    GraphFactory(List(a, b, c)).add_edges((a<->b) ++ (b<->c) ++ (a<->c))
+
+    CliqueFactory(CliqueFactory(Set(a, b)), CliqueFactory(Set(a, c))).vertices.size should be (3)
+  }
+
+  "Cliques " should " base equality of set of vertices contained " in {
+    val a = VertexFactory("a")
+    val c = VertexFactory("c")
+    CliqueFactory(Set(a, c)) should be (CliqueFactory(Set(a, c)))
+    CliqueFactory(Set(a, c)) should be (CliqueFactory(Set(c, a)))
+  }
+
+  "A clique factory " should " be able to combine into bigger cliques" in {
+    val a = VertexFactory("a")
+    val c = VertexFactory("c")
+    val b = VertexFactory("b")
+
+    GraphFactory(List(a, b, c)).add_edges((a<->b) ++ (b<->c) ++ (a<->c))
+    CliqueFactory(a).head.vertices should contain theSameElementsAs Set(a, b, c)
+    CliqueFactory(a).head.vertices should contain theSameElementsAs CliqueFactory(b).head.vertices
+    CliqueFactory(a).size should be (1)
+  }
+
 
 }
 

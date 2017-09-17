@@ -4,7 +4,7 @@ import org.scalatest.{FlatSpec, Matchers}
 
 trait Graph {
   val vertices: List[Vertex]
-  def add_edges(edges: List[Edge]) : Unit
+  def add_edges(edges: List[Edge]) : Graph
 }
 
 case class BaseGraph(vertices: List[Vertex]) extends Graph {
@@ -13,8 +13,9 @@ case class BaseGraph(vertices: List[Vertex]) extends Graph {
     vertices.exists(v => v.incoming_edges.contains(edge) | v.outgoing_edges.contains(edge))
   }
 
-  def add_edges(edges: List[Edge]) : Unit = {
+  def add_edges(edges: List[Edge]) : Graph = {
     edges.foreach(edge => add_edge(edge))
+    this
   }
 
   def add_edge(edge: Edge) : Unit = {
