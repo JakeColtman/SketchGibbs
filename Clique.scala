@@ -1,5 +1,7 @@
 package SumProduct
 
+import org.scalatest.{FlatSpec, Matchers}
+
 trait Clique {
   def separator_variables_from(iClique: Clique): Clique
   def combine_with(iClique: Clique): Clique
@@ -69,18 +71,16 @@ case object CliqueFactory {
 
 }
 
+class CliqueSpec extends FlatSpec with Matchers {
 
-//  "A graph " should " should return a degenerate clique for variables in clique by themselves" in {
-//    val a = CliquePotential("a")
-//    val b = Separator("b")
-//    val c = Separator("c")
-//
-//    val edgeAB = UndirectedEdge(a, b)
-//    val edgeBC = DirectedEdge(b, c)
-//
-//    val graph = Graph(List(a, b, c), List(edgeAB, edgeBC))
-//    graph.find_a_cliquo_from(c) should be (List(c))
-//  }
+    "A clique factory " should " return a degenerate set of cliques for variables not connected to anything else" in {
+      val a = VertexFactory("a")
+
+      CliqueFactory(a).head should be (CliqueFactory(List(a)))
+    }
+
+}
+
 //
 //  "A graph " should " be able to identify a simple clique" in {
 //    val a = CliquePotential("a")
