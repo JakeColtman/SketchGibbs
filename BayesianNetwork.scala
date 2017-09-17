@@ -10,3 +10,10 @@ package SumProduct
 //    }
 //  }
 //}
+
+//  def convert_to_markov_graph() : Graph = {
+//   Graph(vertices, edges.map(edge => edge match {
+//     case DirectedEdge(from_node, to_node) => UndirectedEdge(from_node, to_node)
+//     case UndirectedEdge(first_node, second_node) => edge
+//   }))
+//  }
