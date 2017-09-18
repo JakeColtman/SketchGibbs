@@ -26,7 +26,7 @@ case class BaseGraph(vertices: List[Vertex]) extends Graph {
   }
 
   override def is_complete: Boolean = {
-    !vertices.exists(v => v.is_complete)
+    !vertices.exists(v => !v.is_complete)
   }
 
   override def run_to_completion(): Unit = {

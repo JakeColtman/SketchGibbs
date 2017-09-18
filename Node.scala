@@ -10,8 +10,7 @@ trait Node {
 case class FactorNode(factor: Factor) extends  Node {
   override def generate_message_to(vertex: Vertex, incoming_messages: Map[Vertex, Message]): Message = {
     val combined_factor = incoming_messages.foldLeft(factor)({case (a, (v, m)) => a.mult(m.factor)})
-    val other_variables = combined_factor.variables.filter(x => !vertex.content.variables.contains(x))
-    val marginalized_factor = other_variables.foldLeft(combined_factor)({case (f, v) => f.marginalize(v)})
+    val marginalized_factor = combined_factor.marginalize(vertex.content.variables.head)
     MessageFactory(marginalized_factor)
   }
 
@@ -24,8 +23,8 @@ case class ObservedVariableNode(variable: Variable, value: Int) extends Node {
   }
   def generate_message_to(vertex: Vertex, incoming_messages: Map[Vertex, Message]): Message = {
     val rows = variable.possible_values.map(x => {
-      if (x == value) FactorRow(Realization(Map(variable->value)), 1.0)
-      else FactorRow(Realization(Map(variable->value)), 0.0)
+      if (x == value) FactorRow(Realization(Map(variable->x)), 1.0)
+      else FactorRow(Realization(Map(variable->x)), 0.0)
     })
     MessageFactory(RowsFactor(rows))
   }
@@ -40,7 +39,10 @@ case class VariableNode(variable: Variable) extends Node {
     } )
 
     RowsFactor(unnormalized_rows)
+  }
 
+  def normalized_marginal(messages: List[Message]): Factor = {
+    FactorFactory.normalize(unnormalized_marginal(messages))
   }
 
   def base_factor() : Factor = {

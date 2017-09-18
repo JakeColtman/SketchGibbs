@@ -11,7 +11,6 @@ case class ListClique(vertices: Set[Vertex]) extends Clique {
   def separator_variables_from(clique: Clique): Clique = {
     ListClique(clique.vertices.intersect(vertices))
   }
-
 }
 
 case object CliqueCombiner {
@@ -60,11 +59,8 @@ case object CliqueFactory {
       done = results._1
       cliques= results._2
     }
-
     cliques
-
   }
-
 }
 
 class CliqueSpec extends FlatSpec with Matchers {

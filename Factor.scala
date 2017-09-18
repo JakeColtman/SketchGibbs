@@ -33,7 +33,7 @@ case class RowsFactor(rows: List[FactorRow]) extends Factor {
   }
 
   def marginalize(variable: Variable) : Factor = {
-    val new_maps = rows.map(row => row.realization.realization).map(mappy => mappy.filterKeys(key => key!= variable))
+    val new_maps = rows.map(row => row.realization.realization).map(mappy => mappy.filterKeys(key => key==variable))
     val new_factor_rows = new_maps.distinct.map(real => FactorRow(Realization(real), marginal_value_at(Realization(real))))
     RowsFactor(new_factor_rows)
   }
@@ -51,9 +51,17 @@ case object FactorFactory {
   def apply(realizations: List[Realization], values: List[Double]): Factor = {
     FactorFactory((realizations zip values).map({case(r, d) => FactorRow(r, d)}))
   }
+
+  def normalize(factor: Factor) : Factor = {
+    val summed_weight = factor.rows.map(fr => fr.value).sum
+    val normalized_rows = factor.rows.map(fr => FactorRow(fr.realization, fr.value / summed_weight))
+    FactorFactory(normalized_rows)
+  }
+
 }
 
 class FactorSpec extends FlatSpec with Matchers {
+
     "A factor " should "accurately record its variables" in {
       val a = VariableFactory("a")
       val b = VariableFactory("b")

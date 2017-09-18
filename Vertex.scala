@@ -15,7 +15,6 @@ trait Vertex {
   }
 
   def can_send_to(vertex: Vertex) : Boolean = {
-
     outgoing_edges.map(e => e.to).contains(vertex) & !incoming_edges.filter(e => e.from != vertex).exists(e => e.message.isEmpty)
   }
 

@@ -18,6 +18,21 @@ case class FactorMessage(factor: Factor) extends Message {
   }
 }
 
+
+
+case class Bernoulli(variable: Variable, p: Double) extends Message {
+  override def value_at(realization: Realization): Double = {
+    val value = realization.realization(variable)
+    if (value == 0) 1 - p
+    else p
+
+  }
+
+  override def factor: Factor = {
+    FactorFactory(List(variable<=0, variable<=1), List(1-p, p))
+  }
+}
+
 case object MessageFactory {
   def apply(factor: Factor) : Message = {
     FactorMessage(factor)
