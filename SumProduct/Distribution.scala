@@ -3,6 +3,7 @@ package SumProduct
 trait Distribution {
   def f: (Realization => Double)
   def value_at(realization: Realization) : Double
+  def value_at(value: Double) : Double
   def variables: List[Variable]
   def main_variable: Variable
   def sample_at(realization: Realization): Double
@@ -21,6 +22,8 @@ case class FunctionDistribution(main_variable: Variable, variables: List[Variabl
   }
 
   override def sample_at(realization: Realization): Double = 0.0
+
+  override def value_at(value: Double): Double = value_at(Realization(Map(main_variable->value)))
 }
 
 case object DistributionFactory {

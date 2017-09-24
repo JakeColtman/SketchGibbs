@@ -60,7 +60,7 @@ case class DistributionNode(distribution: Distribution, starting_value: Double) 
     val node_conditional_on_parents: Distribution = distribution.condition(parent_realization)
     val children_conditional_on_parents = outgoing_edges.map(e => e.to.generate_conditional_distribution(this))
     val conditional_distribution = DistributionFactory(main_variable, List(node_conditional_on_parents) ++ children_conditional_on_parents)
-    current_value = SliceSampler.sample(conditional_distribution)
+    current_value = SliceSampler(conditional_distribution, current_value).draw
   }
 
 }
