@@ -28,7 +28,9 @@ trait SumProductNode {
   def send_message_to(vertex: SumProductNode) : Unit = {
     if (!can_send_to(vertex)) return
     val other_messages = incoming_edges.filter(m=> m.from != vertex).map(message => (message.from, message.message.get)).toMap
-    val message = vertex.generate_message_to(vertex, other_messages)
+    println(other_messages.size)
+    other_messages.foreach(println)
+    val message = generate_message_to(vertex, other_messages)
     outgoing_edges.filter(e => e.to == vertex).head.message = Some(message)
     receive_message(this, Some(message))
   }
@@ -72,14 +74,15 @@ case class FactorNode(factor: Factor) extends SumProductNode with Vertex[SumProd
         case _ => a
       }
     })
-    val marginalized_factor = combined_factor.marginalize(vertex.variables.head)
+    combined_factor.rows.foreach(println)
+    val marginalized_factor : Factor = combined_factor.marginalize(vertex.variables.head)
     MessageFactory(marginalized_factor)
   }
 
   override def variables: List[Variable] = factor.variables
 }
 
-case class ObservedVariableNode(variable: Variable, value: Int) extends SumProductNode with Vertex[SumProductNode] {
+case class ObservedVariableNode(variable: Variable, value: Double) extends SumProductNode with Vertex[SumProductNode] {
   val content = this
   def variables: List[Variable] = {
     List(variable)
@@ -141,7 +144,7 @@ case object NodeFactory {
   def apply(variable_name: String) = VariableNode(VariableFactory(variable_name))
   def apply(distribution: Distribution, starting_value: Double) = DistributionNode(distribution: Distribution, starting_value)
   def apply(factor: Factor) = FactorNode(factor)
-  def apply(variable: Variable, value: Int) = ObservedVariableNode(variable: Variable, value: Int)
+  def apply(variable: Variable, value: Double) = ObservedVariableNode(variable: Variable, value: Double)
 }
 
 class FactorNodeSpec extends FlatSpec with Matchers {
@@ -149,7 +152,7 @@ class FactorNodeSpec extends FlatSpec with Matchers {
     val a = VariableFactory("a")
     val b = VariableFactory("b")
 
-    val realizations = List((a<=0) ++ (b<=0), (a<=0) ++ (b<=1), (a<=1) ++ (b<=0), (a<=1) ++ (b<=1))
+    val realizations = List((a<=0.0) ++ (b<=0.0), (a<=0.0) ++ (b<=1.0), (a<=1.0) ++ (b<=0.0), (a<=1.0) ++ (b<=1.0))
     val values = List(0.2*0.6, 0.2*0.4, 0.8*0.6, 0.8*0.4)
     val facty = FactorFactory(realizations, values)
 
@@ -163,6 +166,7 @@ class FactorNodeSpec extends FlatSpec with Matchers {
     factyVertex.incoming_edges.size should be (2)
     vertB.send_message_to(factyVertex)
     factyVertex.incoming_edges.count(e => e.message.isDefined) should be (1)
+    println(vertA.variables)
     factyVertex.send_message_to(vertA)
     val message = vertA.incoming_edges.head.message
     message.get.variable should be (a)
@@ -227,7 +231,7 @@ class SumProductNodeSpec extends FlatSpec with Matchers {
   "Vertices with a single outgoing edge" should " be able to send to it " in {
     val a = NodeFactory("a")
     val b = NodeFactory("b")
-    a.outgoing_edges = a.outgoing_edges ++ EdgeFactory(Directed, a, b)
+    a.outgoing_edges = a.outgoing_edges ++ EdgeFactory[SumProductNode](Directed, a, b)
     a.can_send_to(b) should be (true)
     b.can_send_to(a) should be (false)
   }
@@ -235,10 +239,10 @@ class SumProductNodeSpec extends FlatSpec with Matchers {
     val a = NodeFactory("a")
     val b = NodeFactory("b")
     val c = NodeFactory("c")
-    a.outgoing_edges = a.outgoing_edges ++ EdgeFactory(Directed, a, b)
-    a.outgoing_edges = a.outgoing_edges ++ EdgeFactory(Directed, a, c)
-    a.incoming_edges = a.incoming_edges ++ EdgeFactory(Directed, b, a)
-    a.incoming_edges = a.incoming_edges ++ EdgeFactory(Directed, c, a)
+    a.outgoing_edges = a.outgoing_edges ++ EdgeFactory[SumProductNode](Directed, a, b)
+    a.outgoing_edges = a.outgoing_edges ++ EdgeFactory[SumProductNode](Directed, a, c)
+    a.incoming_edges = a.incoming_edges ++ EdgeFactory[SumProductNode](Directed, b, a)
+    a.incoming_edges = a.incoming_edges ++ EdgeFactory[SumProductNode](Directed, c, a)
     a.can_send_to(b) should be (false)
     a.can_send_to(c) should be (false)
   }
@@ -246,10 +250,10 @@ class SumProductNodeSpec extends FlatSpec with Matchers {
     val a = NodeFactory("a")
     val b = NodeFactory("b")
     val c = NodeFactory("c")
-    a.outgoing_edges = a.outgoing_edges ++ EdgeFactory(Directed, a, b)
-    a.outgoing_edges = a.outgoing_edges ++ EdgeFactory(Directed, a, c)
-    a.incoming_edges = a.incoming_edges ++ EdgeFactory(Directed, b, a)
-    a.incoming_edges = a.incoming_edges ++ EdgeFactory(Directed, c, a)
+    a.outgoing_edges = a.outgoing_edges ++ EdgeFactory[SumProductNode](Directed, a, b)
+    a.outgoing_edges = a.outgoing_edges ++ EdgeFactory[SumProductNode](Directed, a, c)
+    a.incoming_edges = a.incoming_edges ++ EdgeFactory[SumProductNode](Directed, b, a)
+    a.incoming_edges = a.incoming_edges ++ EdgeFactory[SumProductNode](Directed, c, a)
     a.can_send_to(b) should be (false)
     a.can_send_to(c) should be (false)
     a.receive_message(b, Some(MockMessage()))

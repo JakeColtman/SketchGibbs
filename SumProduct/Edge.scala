@@ -33,7 +33,7 @@ class EdgeSpec extends FlatSpec with Matchers {
   "Edges " should " be equal if their vertices are the same" in {
     val a = NodeFactory("a")
     val b = NodeFactory("b")
-    val edge0 = EdgeFactory(Directed, a, b)
+    val edge0 = EdgeFactory[SumProductNode](Directed, a, b)
     val edge1 = EdgeFactory(Directed, a, b)
     edge0 should be (edge1)
   }

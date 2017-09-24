@@ -97,9 +97,8 @@ class FactorSpec extends FlatSpec with Matchers {
     val realizations = List((a<=0) ++ (b<=0), (a<=0) ++ (b<=1), (a<=1) ++ (b<=0), (a<=1) ++ (b<=1))
     val values = List((1.0 - p_true) * (1.0 - q_true), (1.0 - p_true) * q_true, p_true * (1.0 - q_true),  p_true * q_true)
     val facty = FactorFactory(realizations, values)
-
-    facty.marginalize(b).marginal_value_at(a<=1) should be (p_true +- 0.01)
-    facty.marginalize(a).marginal_value_at(b<=0) should be ((1.0 - q_true) +- 0.01)
+    facty.marginalize(a).marginal_value_at(a<=1) should be (p_true +- 0.01)
+    facty.marginalize(b).marginal_value_at(b<=0) should be ((1.0 - q_true) +- 0.01)
   }
 
   "Superset realizations " should " act like set realizations" in {

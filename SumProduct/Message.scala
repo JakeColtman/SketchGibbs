@@ -1,6 +1,8 @@
 package SumProduct
 import org.scalatest._
 
+import scala.util.control
+
 trait Message{
   def variable: Variable
   def apply(value: Double): Double = value_at(variable<=value)
@@ -15,7 +17,7 @@ case class FactorMessage(factor: Factor) extends Message {
   def variable : Variable = factor.variables.head
 
   def value_at(realization: Realization): Double = {
-    factor.rows.filter(x => x.realization == realization).head.value
+      factor.rows.filter(x => x.realization == realization).head.value
   }
 }
 
