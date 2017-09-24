@@ -3,9 +3,10 @@ import org.scalatest._
 
 trait Message{
   def variable: Variable
+  def apply(value: Double): Double = value_at(variable<=value)
   def value_at(realization: Realization): Double
-  def factor: Factor
 }
+
 
 case class FactorMessage(factor: Factor) extends Message {
 
@@ -18,33 +19,18 @@ case class FactorMessage(factor: Factor) extends Message {
   }
 }
 
-
-
-case class Bernoulli(variable: Variable, p: Double) extends Message {
-  override def value_at(realization: Realization): Double = {
-    val value = realization.realization(variable)
-    if (value == 0) 1 - p
-    else p
-
-  }
-
-  override def factor: Factor = {
-    FactorFactory(List(variable<=0, variable<=1), List(1-p, p))
-  }
+case class MockMessage() extends Message {
+  override def variable: Variable = VariableFactory("mocked")
+  override def value_at(realization: Realization): Double = 1.0
 }
 
 case object MessageFactory {
   def apply(factor: Factor) : Message = {
     FactorMessage(factor)
   }
+  def apply = MockMessage()
 }
 
-case class MockMessage() extends Message {
-  override def variable: Variable = VariableFactory("mocked")
-
-  override def value_at(realization: Realization): Double = 1.0
-  def factor = RowsFactor(List())
-}
 
 class MessageSpec extends FlatSpec with Matchers {
   "A message " should " be able to extract its variable" in {

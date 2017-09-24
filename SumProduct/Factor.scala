@@ -1,7 +1,7 @@
 package SumProduct
 import org.scalatest._
 
-case class Realization(realization: Map[Variable, Int]) {
+case class Realization(realization: Map[Variable, Double]) {
   def ++(other_realization: Realization): Realization = {
     Realization(other_realization.realization ++ realization)
   }
