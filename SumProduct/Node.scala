@@ -37,32 +37,39 @@ trait SumProductNode {
 }
 
 trait GibbsNode {
-  def generate_conditional_distribution(node: GibbsNode) : Distribution
+  def generate_conditional_distribution_wrt(node: GibbsNode) : Distribution
+  def conditional_distribution: Distribution
   def update_value(): Unit
   def current_value: Double
-  def main_variable: Variable
-  def variables: List[Variable]
+  def variable: Variable
 }
 
 case class DistributionNode(distribution: Distribution, starting_value: Double) extends GibbsNode with Vertex[GibbsNode] {
 
   var current_value = starting_value
   val content = this
-  val main_variable = distribution.main_variable
-  override def variables: List[Variable] = distribution.variables
+  override def variable: Variable = distribution.variable
 
-  def generate_conditional_distribution(node: GibbsNode) : Distribution = {
-    val other_parent_realizations = incoming_edges.filter(e => e.from != node).map(e =>Realization(Map(e.from.main_variable->e.from.current_value)))
-    distribution.condition(other_parent_realizations.reduce(_ ++ _))
+  def generate_conditional_distribution_wrt(node: GibbsNode) : Distribution = {
+    val other_parent_realizations = incoming_edges.filter(e => e.from != node).map(e =>Realization(Map(e.from.variable->e.from.current_value)))
+    val conditioned_on_other_parents = distribution.condition(other_parent_realizations.foldLeft(Realization(Map()))(_ ++ _))
+    conditioned_on_other_parents.condition(variable<=current_value)
   }
-  override def update_value(): Unit = {
-    val parent_realization : Realization = incoming_edges.map(e => Realization(Map(e.from.main_variable->e.from.current_value))).reduce((x, y) => x ++ y)
+
+  override def conditional_distribution: Distribution = {
+    val parent_realizations : List[Realization] = incoming_edges.map(e => Realization(Map(e.from.variable->e.from.current_value)))
+    val parent_realization = parent_realizations.foldLeft(Realization(Map()))((x, y) => x ++ y)
     val node_conditional_on_parents: Distribution = distribution.condition(parent_realization)
-    val children_conditional_on_parents = outgoing_edges.map(e => e.to.generate_conditional_distribution(this))
-    val conditional_distribution = DistributionFactory(main_variable, List(node_conditional_on_parents) ++ children_conditional_on_parents)
-    current_value = SliceSampler(conditional_distribution, current_value).draw
+    val children_conditional_on_parents = outgoing_edges.map(e => e.to.generate_conditional_distribution_wrt(this))
+    DistributionFactory(variable, List(node_conditional_on_parents) ++ children_conditional_on_parents)
   }
 
+  override def update_value(): Unit = {
+    current_value = distribution match {
+      case p : PointDistribution => p.point_realization.realization(p.variable)
+      case _ => SliceSampler(conditional_distribution, current_value).draw
+    }
+  }
 }
 
 case class FactorNode(factor: Factor) extends SumProductNode with Vertex[SumProductNode] {

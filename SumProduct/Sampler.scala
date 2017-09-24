@@ -64,7 +64,7 @@ class SliceSamplerNodeSpec extends FlatSpec with Matchers {
 
     def f(realization: Realization): Double = Gaussian(true_mean, true_stdev).pdf(realization.realization.values.head)
     val ff : (Realization => Double) = f
-    val distr = DistributionFactory(variable, List(variable), ff)
+    val distr = DistributionFactory(variable, ff)
     val sampler = SliceSampler(distr, 1.0)
     val samples = sampler.sample(1000, List(true_mean + 5))
     val mean = samples.sum / samples.size

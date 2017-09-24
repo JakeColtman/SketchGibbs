@@ -1,51 +1,87 @@
 package SumProduct
 
+import org.scalatest.{FlatSpec, Matchers}
+
 trait Distribution {
   def f: (Realization => Double)
   def value_at(realization: Realization) : Double
   def value_at(value: Double) : Double
-  def variables: List[Variable]
-  def main_variable: Variable
-  def sample_at(realization: Realization): Double
+  def variable: Variable
   def condition(other_variables: Realization) : Distribution
+  def sample_at(realization: Realization) : Double
 }
 
-case class FunctionDistribution(main_variable: Variable, variables: List[Variable], f: (Realization => Double)) extends Distribution {
+case class PointDistribution(variable: Variable, point_realization: Realization) extends Distribution {
+  override def f: (Realization) => Double = value_at
+
+  override def value_at(realization: Realization): Double = {
+    if(!point_realization.realization.exists({case (k, v) => realization.realization(k) == v})) 1.0
+    else 0.0
+  }
+  override def value_at(value: Double): Double = value_at(Realization(Map(variable->value)))
+  override def condition(other_variables: Realization): Distribution = this
+
+  override def sample_at(realization: Realization): Double = point_realization.realization(variable)
+}
+
+case class FunctionDistribution(variable: Variable, f: (Realization => Double)) extends Distribution {
   override def value_at(realization: Realization): Double = f(realization)
 
   override def condition(other_variables: Realization): Distribution = {
     def new_f(remaining_variables: Realization) = {
       f(remaining_variables ++ other_variables)
     }
-    val remaining_variables = this.variables.filter(x => !other_variables.realization.keys.toList.contains(x))
-    FunctionDistribution(main_variable, remaining_variables, new_f)
+    FunctionDistribution(variable, new_f)
   }
 
-  override def sample_at(realization: Realization): Double = 0.0
+  override def value_at(value: Double): Double = value_at(Realization(Map(variable->value)))
 
-  override def value_at(value: Double): Double = value_at(Realization(Map(main_variable->value)))
+  override def sample_at(realization: Realization): Double = SliceSampler(this, realization.realization(variable)).draw
 }
 
 case object DistributionFactory {
-  def apply(main_variable: Variable, variables: List[Variable], f: (Realization => Double)): Distribution = {
-    FunctionDistribution(main_variable, variables, f)
+  def apply(variable: Variable, f: (Realization => Double)): Distribution = {
+    FunctionDistribution(variable, f)
   }
-  def apply(main_variable: Variable, variable: Variable, fs : List[(Realization => Double)]) : Distribution = {
+  def apply(variable: Variable, true_realization: Realization): Distribution = {
+    PointDistribution(variable, true_realization)
+  }
+  def apply(variable: Variable, distributions : List[Distribution]) : Distribution = {
     def new_f(realization: Realization) : Double = {
-      fs.map(f => f(realization)).foldLeft(1.0)(_ * _)
+      distributions.map(f => f.f(realization)).foldLeft(1.0)(_ * _)
     }
-    FunctionDistribution(main_variable, List(variable), new_f)
+    FunctionDistribution(variable, new_f)
   }
-  def apply(main_variable: Variable, distributions : List[Distribution]) : Distribution = {
-    DistributionFactory(main_variable, main_variable, distributions.map(x => x.f))
-  }
-  def apply(main_variable: Variable, true_realization: Realization): Distribution = {
-    def f(realization: Realization): Double = {
-      val matched = !true_realization.realization.exists({case (key, value) => realization.realization.getOrElse(key, -1000) != value})
-      if (matched) 1.0 else 0.0
-    }
-    FunctionDistribution(main_variable, List(main_variable), f)
-  }
-
-
+  def uniform(variable: Variable): Distribution = FunctionDistribution(variable, x => 1.0)
 }
+
+class DistributionSpec extends FlatSpec with Matchers {
+  "A function distribution " should " be able to correctly interact with its function " in {
+    val a = VariableFactory("a")
+    val b = VariableFactory("b")
+
+    def f(realization: Realization) : Double = {
+      realization.realization(a) * realization.realization(b)
+    }
+    val functy : Realization => Double = f
+    val distry = DistributionFactory(VariableFactory("a"), functy)
+    distry.value_at((a<=0.0) ++ (b<=3.0)) should be (0.0 * 3.0)
+    distry.value_at((a<=10.0) ++ (b<=3.0)) should be (10.0 * 3.0)
+    distry.value_at((a<=10.0) ++ (b<=30.0)) should be (10.0 * 30.0)
+  }
+
+  "A function distribution " should " be able to condition out variables " in {
+    val a = VariableFactory("a")
+    val b = VariableFactory("b")
+
+    def f(realization: Realization) : Double = {
+      realization.realization(a) * realization.realization(b)
+    }
+    val functy : Realization => Double = f
+    val distry = DistributionFactory(VariableFactory("a"), functy)
+    val conditioned_distry = distry.condition(b<=3.0)
+    conditioned_distry.value_at(a<=0.0) should be (0.0 * 3.0)
+    conditioned_distry.value_at(a<=10.0) should be (10.0 * 3.0)
+  }
+}
+
