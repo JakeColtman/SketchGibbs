@@ -1,6 +1,6 @@
 package SumProduct
 
-import breeze.stats.distributions.Gaussian
+import breeze.stats.distributions.{Gaussian, Beta}
 import org.scalatest.{FlatSpec, Matchers}
 
 trait Distribution {
@@ -69,6 +69,22 @@ case object DistributionFactory {
       Gaussian(mean, sigma).pdf(theta)
     }
     FunctionDistribution(variable, x => gaussian_f(x))
+  }
+  def beta(variable: Variable, alpha: Variable, beta: Variable) : Distribution = {
+    def beta_f(realization: Realization): Double = {
+      val alpha_val = realization.realization(alpha)
+      val beta_val = realization.realization(beta)
+      val theta_val = realization.realization(variable)
+      new Beta(alpha_val, beta_val).pdf(theta_val)
+    }
+    FunctionDistribution(variable, x => beta_f(x))
+  }
+  def beta(variable: Variable, alpha: Double, beta: Double) : Distribution = {
+    def beta_f(realization: Realization): Double = {
+      val theta_val = realization.realization(variable)
+      new Beta(alpha, beta).pdf(theta_val)
+    }
+    FunctionDistribution(variable, x => beta_f(x))
   }
 }
 
