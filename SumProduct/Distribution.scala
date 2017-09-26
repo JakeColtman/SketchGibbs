@@ -1,5 +1,6 @@
 package SumProduct
 
+import breeze.stats.distributions.Gaussian
 import org.scalatest.{FlatSpec, Matchers}
 
 trait Distribution {
@@ -53,6 +54,22 @@ case object DistributionFactory {
     FunctionDistribution(variable, new_f)
   }
   def uniform(variable: Variable): Distribution = FunctionDistribution(variable, x => 1.0)
+  def gaussian(variable: Variable, mean: Variable, st_dev: Variable) : Distribution = {
+    def gaussian_f(realization: Realization): Double = {
+      val mean_val = realization.realization(mean)
+      val stdev_val = realization.realization(st_dev)
+      val theta_val = realization.realization(variable)
+      Gaussian(mean_val, stdev_val).pdf(theta_val)
+    }
+    FunctionDistribution(variable, x => gaussian_f(x))
+  }
+  def gaussian(variable: Variable, mean: Double, sigma: Double) : Distribution = {
+    def gaussian_f(realization: Realization): Double = {
+      val theta = realization.realization(variable)
+      Gaussian(mean, sigma).pdf(theta)
+    }
+    FunctionDistribution(variable, x => gaussian_f(x))
+  }
 }
 
 class DistributionSpec extends FlatSpec with Matchers {

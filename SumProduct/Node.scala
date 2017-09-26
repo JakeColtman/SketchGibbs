@@ -72,6 +72,30 @@ case class DistributionNode(distribution: Distribution, starting_value: Double) 
   }
 }
 
+
+case class ObservedDistributionNode(distribution: Distribution, observed_value: Double) extends GibbsNode with Vertex[GibbsNode] {
+
+  var current_value = observed_value
+  val content = this
+  override def variable: Variable = distribution.variable
+
+  def generate_conditional_distribution_wrt(node: GibbsNode) : Distribution = {
+    val other_parent_realizations = incoming_edges.filter(e => e.from != node).map(e =>Realization(Map(e.from.variable->e.from.current_value)))
+    val conditioned_on_other_parents = distribution.condition(other_parent_realizations.foldLeft(Realization(Map()))(_ ++ _))
+    conditioned_on_other_parents.condition(variable<=current_value)
+  }
+
+  override def conditional_distribution: Distribution = {
+    val parent_realizations : List[Realization] = incoming_edges.map(e => Realization(Map(e.from.variable->e.from.current_value)))
+    val parent_realization = parent_realizations.foldLeft(Realization(Map()))((x, y) => x ++ y)
+    val node_conditional_on_parents: Distribution = distribution.condition(parent_realization)
+    val children_conditional_on_parents = outgoing_edges.map(e => e.to.generate_conditional_distribution_wrt(this))
+    DistributionFactory(variable, List(node_conditional_on_parents) ++ children_conditional_on_parents)
+  }
+
+  override def update_value(): Unit = {}
+}
+
 case class FactorNode(factor: Factor) extends SumProductNode with Vertex[SumProductNode] {
   val content = this
   override def generate_message_to(vertex: SumProductNode, incoming_messages: Map[SumProductNode, Message]): Message = {
@@ -150,8 +174,10 @@ case object NodeFactory {
   def apply(variable: Variable) = VariableNode(variable)
   def apply(variable_name: String) = VariableNode(VariableFactory(variable_name))
   def apply(distribution: Distribution, starting_value: Double) = DistributionNode(distribution: Distribution, starting_value)
+  def apply(distribution: Distribution) = DistributionNode(distribution: Distribution, distribution.sample_at(Realization(Map())))
   def apply(factor: Factor) = FactorNode(factor)
   def apply(variable: Variable, value: Double) = ObservedVariableNode(variable: Variable, value: Double)
+  def observed(distribution: Distribution, observed_value: Double) : ObservedDistributionNode = ObservedDistributionNode(distribution, observed_value)
 }
 
 class FactorNodeSpec extends FlatSpec with Matchers {
