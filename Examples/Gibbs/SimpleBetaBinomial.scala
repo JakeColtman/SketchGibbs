@@ -16,7 +16,7 @@ object SimpleBetaBinomial extends App {
   val trx_node = NodeFactory.observed(trx, 5.0)
   val graph = GraphFactory.gibbs(List(trx_node, prior_node))
   graph.add_edges(prior_node->trx_node)
-  for(x <-1 to 400) {
+  for(x <-1 to 500) {
       graph.run_iteration()
       println(prior_node.current_value)
   }
