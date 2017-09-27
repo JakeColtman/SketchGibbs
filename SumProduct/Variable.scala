@@ -2,7 +2,6 @@ package SumProduct
 import org.scalatest.{FlatSpec, Matchers}
 
 
-
 trait Variable {
   val name: String
   val possible_values: List[Double]
@@ -11,13 +10,15 @@ trait Variable {
 
 object VariableFactory {
   def apply(name: String) : Variable = TFVariable(name)
+
+  def apply(name: String, size: Int): List[Variable] = {
+    (List.fill(size)(name) zip (1 to size)).map({case (n, i) => VariableFactory(n + "_" + i.toString)})
+  }
 }
 
 case class TFVariable(name: String) extends Variable{
   val possible_values = List(0.0,1.0)
 }
-
-
 
 class VariableSpec extends FlatSpec with Matchers {
   "A variable " should "return a list of possible values" in {

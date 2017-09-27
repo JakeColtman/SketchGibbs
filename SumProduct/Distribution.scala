@@ -1,6 +1,6 @@
 package SumProduct
 
-import breeze.stats.distributions.{Gaussian, Beta}
+import breeze.stats.distributions.{Gaussian, Beta, Binomial}
 import org.scalatest.{FlatSpec, Matchers}
 
 trait Distribution {
@@ -26,7 +26,14 @@ case class PointDistribution(variable: Variable, point_realization: Realization)
 }
 
 case class FunctionDistribution(variable: Variable, f: (Realization => Double)) extends Distribution {
-  override def value_at(realization: Realization): Double = f(realization)
+  override def value_at(realization: Realization): Double = {
+    try {
+      f(realization)
+    }
+    catch {
+      case _: java.lang.IllegalArgumentException => -1.0
+    }
+  }
 
   override def condition(other_variables: Realization): Distribution = {
     def new_f(remaining_variables: Realization) = {
@@ -85,6 +92,14 @@ case object DistributionFactory {
       new Beta(alpha, beta).pdf(theta_val)
     }
     FunctionDistribution(variable, x => beta_f(x))
+  }
+  def binomial(variable: Variable, n: Int, p: Variable) : Distribution = {
+    def binomial_f(realization: Realization): Double = {
+      val theta_val = realization.realization(variable)
+      val p_val = realization.realization(p)
+      Binomial(n, p_val).probabilityOf(theta_val.toInt)
+    }
+    FunctionDistribution(variable, x => binomial_f(x))
   }
 }
 

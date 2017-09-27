@@ -28,7 +28,9 @@ trait GibbsGraph {
 
 case class BaseGibbsGraph(vertices: List[Vertex[GibbsNode]]) extends GibbsGraph with Graph[GibbsNode] {
   override def run_iteration(): GibbsGraph = {
-    vertices.foreach(v => v.content.update_value())
+    vertices.foreach(v => {
+      v.content.update_value()
+    })
     this
   }
 }
