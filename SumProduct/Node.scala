@@ -200,6 +200,13 @@ case object Binomial{
   }
 }
 
+case object Point{
+  def apply(variable: Variable, true_realization: Realization) = {
+    val distribution = DistributionFactory(variable, true_realization)
+    NodeFactory(distribution, true_realization(variable))
+  }
+}
+
 case object Gaussian{
   def apply(variable: Variable, mean: GibbsNode, st_dev: GibbsNode) = {
     val distribution = DistributionFactory.gaussian(variable, mean.variable, st_dev.variable)
