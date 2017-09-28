@@ -87,14 +87,14 @@ case object DistributionFactory {
       val theta_val = realization(variable)
       scala.math.log(new breeze.stats.distributions.Beta(alpha_val, beta_val).pdf(theta_val))
     }
-    FunctionDistribution(variable, x => beta_f(x), VariableFactory(List("alpha", "beta")))
+    FunctionDistribution(variable, x => beta_f(x), List(alpha, beta))
   }
   def beta(variable: Variable, alpha: Double, beta: Double) : Distribution = {
     def beta_f(realization: Realization): Double = {
       val theta_val = realization(variable)
       scala.math.log(new breeze.stats.distributions.Beta(alpha, beta).pdf(theta_val))
     }
-    FunctionDistribution(variable, x => beta_f(x), VariableFactory(List("alpha", "beta")))
+    FunctionDistribution(variable, x => beta_f(x), List())
   }
   def binomial(variable: Variable, n: Int, p: Variable) : Distribution = {
     def binomial_f(realization: Realization): Double = {
@@ -102,7 +102,7 @@ case object DistributionFactory {
       val p_val = realization(p)
       scala.math.log(breeze.stats.distributions.Binomial(n, p_val).probabilityOf(theta_val.toInt))
     }
-    FunctionDistribution(variable, x => binomial_f(x), VariableFactory(List("p")))
+    FunctionDistribution(variable, x => binomial_f(x), List(p))
   }
 }
 

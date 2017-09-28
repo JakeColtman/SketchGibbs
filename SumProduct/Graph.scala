@@ -39,8 +39,10 @@ case class BaseGibbsGraph(vertices: List[Vertex[GibbsNode]]) extends GibbsGraph 
   override def infer_edges(): Unit = {
     val vertex_lookup = vertices.map(v => (v.content.variable, v)).toMap
     for(v<-vertices){
-      val edges_to_vertex = v.content.other_variables.flatMap(o_v => vertex_lookup(o_v)->v)
-      add_edges(edges_to_vertex)
+      val edges_to_vertex = v.content.other_variables.flatMap(o_v => o_v.contained_variables).flatMap(o_v => {
+        vertex_lookup(o_v)->v
+      })
+      add_edges(edges_to_vertex.distinct)
     }
   }
 }
@@ -76,12 +78,12 @@ case class TraceGibbsGraphRunner(graph: GibbsGraph, nodes: List[GibbsNode]) exte
   }
   def run(n_burn: Int, n_sample: Int) = {
     for(x<-1 to n_burn){
-      println(x)
+      if (x% 2 == 0){println(x)}
       graph.run_iteration()
     }
     for(x<-1 to n_sample)
     {
-      println(x)
+      if (x% 10 == 0){println(x)}
       record_step()
     }
   }
