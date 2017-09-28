@@ -67,7 +67,7 @@ case class DistributionNode(distribution: Distribution, starting_value: Double) 
   override def update_value(): Unit = {
     current_value = distribution match {
       case p : PointDistribution => p.point_realization.realization(p.variable)
-      case _ => SliceSampler(conditional_distribution, current_value).draw
+      case _ => LogSliceSampler(conditional_distribution, current_value).draw
     }
   }
 }

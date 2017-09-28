@@ -28,8 +28,45 @@ trait GibbsGraph {
 
 case class BaseGibbsGraph(vertices: List[Vertex[GibbsNode]]) extends GibbsGraph with Graph[GibbsNode] {
   override def run_iteration(): GibbsGraph = {
-    vertices.foreach(v => v.content.update_value())
+    vertices.foreach(v => {
+      v.content.update_value()
+    })
     this
+  }
+}
+
+trait GibbsGraphRunner {
+  def run(n_burn: Int, n_sample: Int)
+}
+
+case class MeanGibbsGraphRunner(graph: GibbsGraph, nodes: List[GibbsNode]) extends GibbsGraphRunner {
+  var output : Map[GibbsNode, Double] = nodes.map(x => (x, 0.0)).toMap
+  var counter = 0
+  def record_step() = {
+    graph.run_iteration()
+    for(n<-nodes){
+      counter = counter + 1
+      output = output ++ Map(n ->((output(n) * (counter - 1) + n.current_value) / counter))
+    }
+  }
+  def run(n_burn: Int, n_sample: Int) = {
+    for(_<-1 to n_burn){graph.run_iteration()}
+    for(_<-1 to n_sample){record_step()}
+  }
+}
+
+case class TraceGibbsGraphRunner(graph: GibbsGraph, nodes: List[GibbsNode]) extends GibbsGraphRunner {
+  var output : Map[GibbsNode, List[Double]] = nodes.map(x => (x, List())).toMap
+  var counter = 0
+  def record_step() = {
+    graph.run_iteration()
+    for(n<-nodes){
+      output = output ++ Map(n -> (n.current_value :: output(n)))
+    }
+  }
+  def run(n_burn: Int, n_sample: Int) = {
+    for(_<-1 to n_burn){graph.run_iteration()}
+    for(_<-1 to n_sample){record_step()}
   }
 }
 

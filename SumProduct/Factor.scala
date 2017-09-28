@@ -1,10 +1,78 @@
 package SumProduct
 import org.scalatest._
 
+case class CompositeVariable(left_variable: Variable, right_variable: Variable, f: (Double, Double) => Double) extends Variable {
+  override val name: String = left_variable.name + " with " + right_variable.name
+  override val possible_values: List[Double] = left_variable.possible_values
+}
+
+case class ModifiedVariable(variable: Variable, f: Double => Double) extends Variable {
+  override val name: String = variable.name
+  override val possible_values: List[Double] = variable.possible_values
+}
+
 case class Realization(realization: Map[Variable, Double]) {
   def ++(other_realization: Realization): Realization = {
     Realization(other_realization.realization ++ realization)
   }
+
+  def apply(variable: Variable): Double = variable match {
+    case tf: TFVariable => realization(tf)
+    case cv: ConstantVariable => cv.value
+    case comp: CompositeVariable =>
+      comp.f(this(comp.left_variable), this(comp.right_variable))
+    case comp: ModifiedVariable =>
+      comp.f(this(comp.variable))
+  }
+}
+
+class RealizationSpec extends FlatSpec with Matchers {
+  "A realization " should " return the value of a constant variable" in {
+    val constant = VariableFactory(1.0)
+    Realization(Map())(constant) should be (1.0)
+  }
+
+  "A realization " should " be able to handle simple composite variable" in {
+    val lhs = VariableFactory(1.0)
+    val rhs = VariableFactory(2.0)
+    val comp = CompositeVariable(lhs, rhs, _ + _)
+    Realization(Map())(comp) should be (3.0)
+  }
+
+  "A realization " should " should be able to handle nested composite variable" in {
+    val a = VariableFactory(1.0)
+    val b = VariableFactory(2.0)
+    val lhs = CompositeVariable(a, b, _ + _)
+
+    val rhs = VariableFactory(10.0)
+    val comp = CompositeVariable(lhs, rhs, _ + _)
+    Realization(Map())(comp) should be (13.0)
+
+    val nested_rhs = CompositeVariable(VariableFactory(9.0), rhs, _ - _)
+    val nested_comp = CompositeVariable(lhs, nested_rhs, _ + _)
+    Realization(Map())(nested_comp) should be (2.0)
+  }
+
+  "A realization " should " should be able to handle TFVariables smoothly" in {
+    val a = VariableFactory(1.0)
+    val b = VariableFactory(2.0)
+    val lhs = CompositeVariable(a, b, _ + _)
+
+    val rhs = VariableFactory(10.0)
+    val comp = CompositeVariable(lhs, rhs, _ + _)
+    Realization(Map())(comp) should be (13.0)
+
+    val nested_rhs = CompositeVariable(VariableFactory("b"), rhs, _ - _)
+    val nested_comp = CompositeVariable(lhs, nested_rhs, _ + _)
+    (VariableFactory("b")<=9.0)(nested_comp) should be (2.0)
+  }
+
+  "A realization " should " be able to handle single variable modifications " in {
+    val a = VariableFactory(2.0)
+    val mod_a = ModifiedVariable(a, x => x + 2.0)
+    Realization(Map())(mod_a) should be (4.0)
+  }
+
 }
 
 case class FactorRow(realization: Realization, value: Double)

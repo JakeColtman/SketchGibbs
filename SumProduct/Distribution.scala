@@ -1,6 +1,6 @@
 package SumProduct
 
-import breeze.stats.distributions.{Gaussian, Beta}
+import breeze.stats.distributions.{Gaussian, Beta, Binomial}
 import org.scalatest.{FlatSpec, Matchers}
 
 trait Distribution {
@@ -16,8 +16,8 @@ case class PointDistribution(variable: Variable, point_realization: Realization)
   override def f: (Realization) => Double = value_at
 
   override def value_at(realization: Realization): Double = {
-    if(!point_realization.realization.exists({case (k, v) => realization.realization(k) == v})) 1.0
-    else 0.0
+    if(!point_realization.realization.exists({case (k, v) => realization.realization(k) == v})) 0.0
+    else -Double.MinValue
   }
   override def value_at(value: Double): Double = value_at(Realization(Map(variable->value)))
   override def condition(other_variables: Realization): Distribution = this
@@ -26,7 +26,14 @@ case class PointDistribution(variable: Variable, point_realization: Realization)
 }
 
 case class FunctionDistribution(variable: Variable, f: (Realization => Double)) extends Distribution {
-  override def value_at(realization: Realization): Double = f(realization)
+  override def value_at(realization: Realization): Double = {
+    try {
+      f(realization)
+    }
+    catch {
+      case _: java.lang.IllegalArgumentException => Double.MinValue
+    }
+  }
 
   override def condition(other_variables: Realization): Distribution = {
     def new_f(remaining_variables: Realization) = {
@@ -37,7 +44,7 @@ case class FunctionDistribution(variable: Variable, f: (Realization => Double)) 
 
   override def value_at(value: Double): Double = value_at(Realization(Map(variable->value)))
 
-  override def sample_at(realization: Realization): Double = SliceSampler(this, realization.realization(variable)).draw
+  override def sample_at(realization: Realization): Double = LogSliceSampler(this, realization(variable)).draw
 }
 
 case object DistributionFactory {
@@ -49,42 +56,50 @@ case object DistributionFactory {
   }
   def apply(variable: Variable, distributions : List[Distribution]) : Distribution = {
     def new_f(realization: Realization) : Double = {
-      distributions.map(f => f.f(realization)).foldLeft(1.0)(_ * _)
+      distributions.map(f => f.f(realization)).foldLeft(1.0)(_ + _)
     }
     FunctionDistribution(variable, new_f)
   }
-  def uniform(variable: Variable): Distribution = FunctionDistribution(variable, x => 1.0)
+  def uniform(variable: Variable): Distribution = FunctionDistribution(variable, x => 0.0)
   def gaussian(variable: Variable, mean: Variable, st_dev: Variable) : Distribution = {
     def gaussian_f(realization: Realization): Double = {
-      val mean_val = realization.realization(mean)
-      val stdev_val = realization.realization(st_dev)
-      val theta_val = realization.realization(variable)
-      Gaussian(mean_val, stdev_val).pdf(theta_val)
+      val mean_val = realization(mean)
+      val stdev_val = realization(st_dev)
+      val theta_val = realization(variable)
+      scala.math.log(Gaussian(mean_val, stdev_val).pdf(theta_val))
     }
     FunctionDistribution(variable, x => gaussian_f(x))
   }
   def gaussian(variable: Variable, mean: Double, sigma: Double) : Distribution = {
     def gaussian_f(realization: Realization): Double = {
-      val theta = realization.realization(variable)
-      Gaussian(mean, sigma).pdf(theta)
+      val theta = realization(variable)
+      scala.math.log(Gaussian(mean, sigma).pdf(theta))
     }
     FunctionDistribution(variable, x => gaussian_f(x))
   }
   def beta(variable: Variable, alpha: Variable, beta: Variable) : Distribution = {
     def beta_f(realization: Realization): Double = {
-      val alpha_val = realization.realization(alpha)
-      val beta_val = realization.realization(beta)
-      val theta_val = realization.realization(variable)
-      new Beta(alpha_val, beta_val).pdf(theta_val)
+      val alpha_val = realization(alpha)
+      val beta_val = realization(beta)
+      val theta_val = realization(variable)
+      scala.math.log(new Beta(alpha_val, beta_val).pdf(theta_val))
     }
     FunctionDistribution(variable, x => beta_f(x))
   }
   def beta(variable: Variable, alpha: Double, beta: Double) : Distribution = {
     def beta_f(realization: Realization): Double = {
-      val theta_val = realization.realization(variable)
-      new Beta(alpha, beta).pdf(theta_val)
+      val theta_val = realization(variable)
+      scala.math.log(new Beta(alpha, beta).pdf(theta_val))
     }
     FunctionDistribution(variable, x => beta_f(x))
+  }
+  def binomial(variable: Variable, n: Int, p: Variable) : Distribution = {
+    def binomial_f(realization: Realization): Double = {
+      val theta_val = realization(variable)
+      val p_val = realization(p)
+      scala.math.log(Binomial(n, p_val).probabilityOf(theta_val.toInt))
+    }
+    FunctionDistribution(variable, x => binomial_f(x))
   }
 }
 
@@ -94,7 +109,7 @@ class DistributionSpec extends FlatSpec with Matchers {
     val b = VariableFactory("b")
 
     def f(realization: Realization) : Double = {
-      realization.realization(a) * realization.realization(b)
+      realization(a) * realization(b)
     }
     val functy : Realization => Double = f
     val distry = DistributionFactory(VariableFactory("a"), functy)
@@ -108,7 +123,7 @@ class DistributionSpec extends FlatSpec with Matchers {
     val b = VariableFactory("b")
 
     def f(realization: Realization) : Double = {
-      realization.realization(a) * realization.realization(b)
+      realization(a) * realization(b)
     }
     val functy : Realization => Double = f
     val distry = DistributionFactory(VariableFactory("a"), functy)
