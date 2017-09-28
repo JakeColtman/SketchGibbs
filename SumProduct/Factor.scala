@@ -4,11 +4,20 @@ import org.scalatest._
 case class CompositeVariable(left_variable: Variable, right_variable: Variable, f: (Double, Double) => Double) extends Variable {
   override val name: String = left_variable.name + " with " + right_variable.name
   override val possible_values: List[Double] = left_variable.possible_values
+  override val contained_variables: List[Variable] = {
+    (left_variable.contained_variables ++ right_variable.contained_variables).filter(v => {
+      v match {
+        case _ : ConstantVariable => false
+        case _ => true
+      }
+    })
+  }
 }
 
 case class ModifiedVariable(variable: Variable, f: Double => Double) extends Variable {
   override val name: String = variable.name
   override val possible_values: List[Double] = variable.possible_values
+  override val contained_variables: List[Variable] = List(variable)
 }
 
 case class Realization(realization: Map[Variable, Double]) {

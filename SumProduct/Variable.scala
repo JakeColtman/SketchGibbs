@@ -10,10 +10,12 @@ trait Variable {
   def + (variable: Variable) : Variable = CompositeVariable(this, variable, _ + _ )
   def / (variable: Variable) : Variable = CompositeVariable(this, variable, _ / _ )
   def * (variable: Variable) : Variable = CompositeVariable(this, variable, _ * _ )
+  val contained_variables: List[Variable] = List(this)
 }
 
 object VariableFactory {
   def apply(name: String) : Variable = TFVariable(name)
+  def apply(names: List[String]) : List[Variable] = names.map(n => VariableFactory(n))
 
   def apply(value: Double) : Variable = ConstantVariable(value)
 

@@ -42,6 +42,7 @@ trait GibbsNode {
   def update_value(): Unit
   def current_value: Double
   def variable: Variable
+  def other_variables: List[Variable]
 }
 
 case class DistributionNode(distribution: Distribution, starting_value: Double) extends GibbsNode with Vertex[GibbsNode] {
@@ -49,6 +50,8 @@ case class DistributionNode(distribution: Distribution, starting_value: Double) 
   var current_value = starting_value
   val content = this
   override def variable: Variable = distribution.variable
+
+  override def other_variables: List[Variable] = distribution.other_variables
 
   def generate_conditional_distribution_wrt(node: GibbsNode) : Distribution = {
     val other_parent_realizations = incoming_edges.filter(e => e.from != node).map(e =>Realization(Map(e.from.variable->e.from.current_value)))
@@ -78,6 +81,7 @@ case class ObservedDistributionNode(distribution: Distribution, observed_value: 
   var current_value = observed_value
   val content = this
   override def variable: Variable = distribution.variable
+  override def other_variables: List[Variable] = distribution.other_variables
 
   def generate_conditional_distribution_wrt(node: GibbsNode) : Distribution = {
     val other_parent_realizations = incoming_edges.filter(e => e.from != node).map(e =>Realization(Map(e.from.variable->e.from.current_value)))
@@ -178,6 +182,41 @@ case object NodeFactory {
   def apply(factor: Factor) = FactorNode(factor)
   def apply(variable: Variable, value: Double) = ObservedVariableNode(variable: Variable, value: Double)
   def observed(distribution: Distribution, observed_value: Double) : ObservedDistributionNode = ObservedDistributionNode(distribution, observed_value)
+}
+
+case object Beta{
+  def apply(variable: Variable, alpha: GibbsNode, beta: GibbsNode) = {
+    val distribution = DistributionFactory.beta(variable, alpha.variable, beta.variable)
+    val starting_point = alpha.current_value / (alpha.current_value + beta.current_value)
+    NodeFactory(distribution, starting_point)
+  }
+}
+
+case object Binomial{
+  def apply(variable: Variable, n: Int, p: GibbsNode) = {
+    val distribution = DistributionFactory.binomial(variable, n, p.variable)
+    val starting_point = (n * p.current_value).toInt
+    NodeFactory(distribution, starting_point)
+  }
+}
+
+case object Point{
+  def apply(variable: Variable, true_realization: Realization) = {
+    val distribution = DistributionFactory(variable, true_realization)
+    NodeFactory(distribution, true_realization(variable))
+  }
+}
+
+case object Gaussian{
+  def apply(variable: Variable, mean: GibbsNode, st_dev: GibbsNode) = {
+    val distribution = DistributionFactory.gaussian(variable, mean.variable, st_dev.variable)
+    NodeFactory(distribution, mean.current_value)
+  }
+  def apply(variable: Variable, mean: Double, st_dev: Double) = {
+    val distribution = DistributionFactory.gaussian(variable, mean, st_dev)
+    NodeFactory(distribution, mean)
+  }
+
 }
 
 class FactorNodeSpec extends FlatSpec with Matchers {
