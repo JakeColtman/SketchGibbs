@@ -14,6 +14,7 @@ trait Variable {
 
 object VariableFactory {
   def apply(name: String) : Variable = TFVariable(name)
+  def apply(names: List[String]) : List[Variable] = names.map(n => VariableFactory(n))
 
   def apply(value: Double) : Variable = ConstantVariable(value)
 

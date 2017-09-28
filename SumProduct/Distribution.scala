@@ -10,6 +10,7 @@ trait Distribution {
   def variable: Variable
   def condition(other_variables: Realization) : Distribution
   def sample_at(realization: Realization) : Double
+  def other_variables: List[Variable]
 }
 
 case class PointDistribution(variable: Variable, point_realization: Realization) extends Distribution {
@@ -23,9 +24,11 @@ case class PointDistribution(variable: Variable, point_realization: Realization)
   override def condition(other_variables: Realization): Distribution = this
 
   override def sample_at(realization: Realization): Double = point_realization.realization(variable)
+
+  override def other_variables: List[Variable] = List()
 }
 
-case class FunctionDistribution(variable: Variable, f: (Realization => Double)) extends Distribution {
+case class FunctionDistribution(variable: Variable, f: (Realization => Double), other_variables: List[Variable]) extends Distribution {
   override def value_at(realization: Realization): Double = {
     try {
       f(realization)
@@ -35,11 +38,11 @@ case class FunctionDistribution(variable: Variable, f: (Realization => Double)) 
     }
   }
 
-  override def condition(other_variables: Realization): Distribution = {
+  override def condition(other_variable_realization: Realization): Distribution = {
     def new_f(remaining_variables: Realization) = {
-      f(remaining_variables ++ other_variables)
+      f(remaining_variables ++ other_variable_realization)
     }
-    FunctionDistribution(variable, new_f)
+    FunctionDistribution(variable, new_f, List(variable))
   }
 
   override def value_at(value: Double): Double = value_at(Realization(Map(variable->value)))
@@ -49,7 +52,7 @@ case class FunctionDistribution(variable: Variable, f: (Realization => Double)) 
 
 case object DistributionFactory {
   def apply(variable: Variable, f: (Realization => Double)): Distribution = {
-    FunctionDistribution(variable, f)
+    FunctionDistribution(variable, f, List(variable))
   }
   def apply(variable: Variable, true_realization: Realization): Distribution = {
     PointDistribution(variable, true_realization)
@@ -58,48 +61,48 @@ case object DistributionFactory {
     def new_f(realization: Realization) : Double = {
       distributions.map(f => f.f(realization)).foldLeft(1.0)(_ + _)
     }
-    FunctionDistribution(variable, new_f)
+    FunctionDistribution(variable, new_f, List(variable))
   }
-  def uniform(variable: Variable): Distribution = FunctionDistribution(variable, x => 0.0)
+  def uniform(variable: Variable): Distribution = FunctionDistribution(variable, x => 0.0, List(variable))
   def gaussian(variable: Variable, mean: Variable, st_dev: Variable) : Distribution = {
     def gaussian_f(realization: Realization): Double = {
       val mean_val = realization(mean)
       val stdev_val = realization(st_dev)
       val theta_val = realization(variable)
-      scala.math.log(Gaussian(mean_val, stdev_val).pdf(theta_val))
+      scala.math.log(breeze.stats.distributions.Gaussian(mean_val, stdev_val).pdf(theta_val))
     }
-    FunctionDistribution(variable, x => gaussian_f(x))
+    FunctionDistribution(variable, x => gaussian_f(x), List(mean, st_dev))
   }
   def gaussian(variable: Variable, mean: Double, sigma: Double) : Distribution = {
     def gaussian_f(realization: Realization): Double = {
       val theta = realization(variable)
-      scala.math.log(Gaussian(mean, sigma).pdf(theta))
+      scala.math.log(breeze.stats.distributions.Gaussian(mean, sigma).pdf(theta))
     }
-    FunctionDistribution(variable, x => gaussian_f(x))
+    FunctionDistribution(variable, x => gaussian_f(x), List(variable))
   }
   def beta(variable: Variable, alpha: Variable, beta: Variable) : Distribution = {
     def beta_f(realization: Realization): Double = {
       val alpha_val = realization(alpha)
       val beta_val = realization(beta)
       val theta_val = realization(variable)
-      scala.math.log(new Beta(alpha_val, beta_val).pdf(theta_val))
+      scala.math.log(new breeze.stats.distributions.Beta(alpha_val, beta_val).pdf(theta_val))
     }
-    FunctionDistribution(variable, x => beta_f(x))
+    FunctionDistribution(variable, x => beta_f(x), VariableFactory(List("alpha", "beta")))
   }
   def beta(variable: Variable, alpha: Double, beta: Double) : Distribution = {
     def beta_f(realization: Realization): Double = {
       val theta_val = realization(variable)
-      scala.math.log(new Beta(alpha, beta).pdf(theta_val))
+      scala.math.log(new breeze.stats.distributions.Beta(alpha, beta).pdf(theta_val))
     }
-    FunctionDistribution(variable, x => beta_f(x))
+    FunctionDistribution(variable, x => beta_f(x), VariableFactory(List("alpha", "beta")))
   }
   def binomial(variable: Variable, n: Int, p: Variable) : Distribution = {
     def binomial_f(realization: Realization): Double = {
       val theta_val = realization(variable)
       val p_val = realization(p)
-      scala.math.log(Binomial(n, p_val).probabilityOf(theta_val.toInt))
+      scala.math.log(breeze.stats.distributions.Binomial(n, p_val).probabilityOf(theta_val.toInt))
     }
-    FunctionDistribution(variable, x => binomial_f(x))
+    FunctionDistribution(variable, x => binomial_f(x), VariableFactory(List("p")))
   }
 }
 

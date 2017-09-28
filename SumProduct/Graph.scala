@@ -19,6 +19,8 @@ trait Graph[NodeType] {
     vertices.foreach(v => if (v == edge.from) v.outgoing_edges = v.outgoing_edges ++ List(edge))
     vertices.foreach(v => if (v == edge.to) v.incoming_edges = v.incoming_edges ++ List(edge))
   }
+
+  def infer_edges(): Unit
 }
 
 trait GibbsGraph {
@@ -32,6 +34,14 @@ case class BaseGibbsGraph(vertices: List[Vertex[GibbsNode]]) extends GibbsGraph 
       v.content.update_value()
     })
     this
+  }
+
+  override def infer_edges(): Unit = {
+    val vertex_lookup = vertices.map(v => (v.content.variable, v)).toMap
+    for(v<-vertices){
+      val edges_to_vertex = v.content.other_variables.flatMap(o_v => vertex_lookup(o_v)->v)
+      add_edges(edges_to_vertex)
+    }
   }
 }
 
@@ -65,8 +75,15 @@ case class TraceGibbsGraphRunner(graph: GibbsGraph, nodes: List[GibbsNode]) exte
     }
   }
   def run(n_burn: Int, n_sample: Int) = {
-    for(_<-1 to n_burn){graph.run_iteration()}
-    for(_<-1 to n_sample){record_step()}
+    for(x<-1 to n_burn){
+      println(x)
+      graph.run_iteration()
+    }
+    for(x<-1 to n_sample)
+    {
+      println(x)
+      record_step()
+    }
   }
 }
 
@@ -86,6 +103,8 @@ case class BaseSumProductGraph(vertices: List[Vertex[SumProductNode]]) extends S
         vertices.foreach(v => v.content.emit_messages())
       }
     }
+
+    override def infer_edges(): Unit = {}
 }
 
 case object GraphFactory{
