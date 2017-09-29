@@ -78,12 +78,10 @@ case class TraceGibbsGraphRunner(graph: GibbsGraph, nodes: List[GibbsNode]) exte
   }
   def run(n_burn: Int, n_sample: Int) = {
     for(x<-1 to n_burn){
-      if (x% 2 == 0){println(x)}
       graph.run_iteration()
     }
     for(x<-1 to n_sample)
     {
-      if (x% 10 == 0){println(x)}
       record_step()
     }
   }
