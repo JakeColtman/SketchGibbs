@@ -1,16 +1,11 @@
 package Examples.Gibbs
-import scala.util.control.Breaks._
 
 import java.util.Calendar
-
 import SumProduct._
 
-/**
-  * Created by jacoltman on 26/09/2017.
-  */
 object HierarchicalBetaBetaSimple extends App {
   import scala.io.Source
-  val src = Source.fromFile("C:\\Users\\jacoltman\\Documents\\scala\\src\\Examples\\Gibbs\\HierarchicalBeta\\data.csv")
+  val src = Source.fromFile("data.csv")
   val iter = src.getLines().map(_.split(","))
 
   var market_names : List[String] = List()
@@ -25,12 +20,6 @@ object HierarchicalBetaBetaSimple extends App {
     trx = x(3).toInt :: trx
 
   }
-
-  val cut = 500
-  market_names = market_names.slice(0, cut)
-  property_names = property_names.slice(0, cut)
-  clicks = clicks.slice(0, cut)
-  trx = trx.slice(0, cut)
 
   val prior = VariableFactory("prior")
 

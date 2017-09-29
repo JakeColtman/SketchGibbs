@@ -93,4 +93,4 @@ Presently the pre-made options are to record the full trace, or just to record t
 
 ## Performance
 
-For problems which meet the right structural criteria, GibbsSampler smokes Stan and pymc3
+Performance on small data sets (< 500 data points) is comparable to pymc3 and can even be 3-4 x faster on very small datasets.  Performance is _acceptable_ on bigger datasets, but there are a million and one ways in which it can be improved through time.
