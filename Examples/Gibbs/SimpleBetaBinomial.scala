@@ -2,9 +2,7 @@ package Examples.Gibbs
 import SumProduct._
 import breeze.stats.distributions.{Gaussian, Beta, Binomial}
 
-/**
-  * Created by jacoltman on 26/09/2017.
-  */
+
 object SimpleBetaBinomial extends App {
 
   val prior_p = VariableFactory("prior_p")

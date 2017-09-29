@@ -84,7 +84,9 @@ case object DistributionFactory {
     def beta_f(realization: Realization): Double = {
       val alpha_val = realization(alpha)
       val beta_val = realization(beta)
-      val theta_val = realization(variable)
+      var theta_val = realization(variable)
+      if(theta_val == 0.0){theta_val = 0.001}
+      if(theta_val == 1.0){theta_val = 0.999}
       scala.math.log(new breeze.stats.distributions.Beta(alpha_val, beta_val).pdf(theta_val))
     }
     FunctionDistribution(variable, x => beta_f(x), List(alpha, beta))

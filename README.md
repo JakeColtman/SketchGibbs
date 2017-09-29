@@ -54,7 +54,7 @@ For example, we can represent a model of a gaussian with a known st-dev and unkn
     val known_st_dev = 1.0
     val prior = VariableFactory("prior")
     val prior_mean = Gaussian(prior, 0.0, 100.0)
-    val unknown_value = Gaussian(VariableFactor("unknown_var", prior, known_st_dev) 
+    val unknown_value = Gaussian(VariableFactory("unknown_var", prior, known_st_dev))
 ```
 
 Behind the scenes, the process of passing variables as parameters creates the edges between the relevant nodes.
@@ -93,4 +93,4 @@ Presently the pre-made options are to record the full trace, or just to record t
 
 ## Performance
 
-For problems which meet the right structural criteria, GibbsSampler smokes Stan and pymc3
+Performance on small data sets (< 500 data points) is comparable to pymc3 and can even be 3-4 x faster on very small datasets.  Performance is _acceptable_ on bigger datasets, but there are a million and one ways in which it can be improved through time.
