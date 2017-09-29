@@ -54,7 +54,7 @@ For example, we can represent a model of a gaussian with a known st-dev and unkn
     val known_st_dev = 1.0
     val prior = VariableFactory("prior")
     val prior_mean = Gaussian(prior, 0.0, 100.0)
-    val unknown_value = Gaussian(VariableFactor("unknown_var", prior, known_st_dev) 
+    val unknown_value = Gaussian(VariableFactory("unknown_var", prior, known_st_dev))
 ```
 
 Behind the scenes, the process of passing variables as parameters creates the edges between the relevant nodes.
