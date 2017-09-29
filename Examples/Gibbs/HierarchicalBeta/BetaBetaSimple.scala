@@ -1,4 +1,5 @@
 package Examples.Gibbs
+import scala.util.control.Breaks._
 
 import java.util.Calendar
 
@@ -7,7 +8,7 @@ import SumProduct._
 /**
   * Created by jacoltman on 26/09/2017.
   */
-object BetaBetaSimple extends App {
+object HierarchicalBetaBetaSimple extends App {
   import scala.io.Source
   val src = Source.fromFile("C:\\Users\\jacoltman\\Documents\\scala\\src\\Examples\\Gibbs\\HierarchicalBeta\\data.csv")
   val iter = src.getLines().map(_.split(","))
@@ -22,8 +23,14 @@ object BetaBetaSimple extends App {
     property_names = x(1) :: property_names
     clicks = x(2).toInt :: clicks
     trx = x(3).toInt :: trx
+
   }
 
+  val cut = 500
+  market_names = market_names.slice(0, cut)
+  property_names = property_names.slice(0, cut)
+  clicks = clicks.slice(0, cut)
+  trx = trx.slice(0, cut)
 
   val prior = VariableFactory("prior")
 
@@ -46,7 +53,7 @@ object BetaBetaSimple extends App {
 
   val props = VariableFactory(property_names)
   val prop_distrs = (props zip VariableFactory(market_names)).map( {case (p,m) => make_a_distribution(p, cp, m)})
-  val prop_nodes = ((prop_distrs zip clicks) zip trx).map({case ((p, c),t) => NodeFactory(p, (0.001 + t.toDouble) / c.toDouble)})
+  val prop_nodes = ((prop_distrs zip clicks) zip trx).map({case ((p, c),t) => NodeFactory(p, (0.001 + t.toDouble) / (0.002 + c.toDouble))})
 
   val trxs = VariableFactory("trx", props.size)
   val trx_distrs = ((trxs zip props) zip clicks).map({case ((t, p),c) => DistributionFactory.binomial(t, c, p)})
@@ -58,7 +65,7 @@ object BetaBetaSimple extends App {
 
   println(Calendar.getInstance.getTime)
   val runner = TraceGibbsGraphRunner(graph, List(prior_node))
-  runner.run(500, 500)
+  runner.run(500, 1000)
   println(Calendar.getInstance.getTime)
 
 
